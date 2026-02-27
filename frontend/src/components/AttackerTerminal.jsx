@@ -59,10 +59,10 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
         fitAddonRef.current = fitAddon;
 
         // Welcome message
-        terminal.writeln('\x1b[1;36m╔═══════════════════════════════════════════════════╗\x1b[0m');
-        terminal.writeln('\x1b[1;36m║       LABYRINTH FORGE — ATTACKER TERMINAL         ║\x1b[0m');
-        terminal.writeln('\x1b[1;36m║       Honeypot SSH Session Monitor                 ║\x1b[0m');
-        terminal.writeln('\x1b[1;36m╚═══════════════════════════════════════════════════╝\x1b[0m');
+        terminal.writeln('\x1b[1;36m                        ╔═══════════════════════════════════════════════════╗\x1b[0m');
+        terminal.writeln('\x1b[1;36m                        ║       LABYRINTH FORGE — ATTACKER TERMINAL         ║\x1b[0m');
+        terminal.writeln('\x1b[1;36m                        ║       Honeypot SSH Session Monitor                ║\x1b[0m');
+        terminal.writeln('\x1b[1;36m                        ╚═══════════════════════════════════════════════════╝\x1b[0m');
         terminal.writeln('');
         terminal.writeln('\x1b[90mWaiting for attacker connection...\x1b[0m');
         terminal.writeln('\x1b[90mClick "Start Live Attack Simulation" to begin.\x1b[0m');

@@ -1,4 +1,5 @@
-import { FileText, Download, Clock, Shield, Crosshair, AlertTriangle, CheckCircle2, Activity } from 'lucide-react';
+import { FileText, Download, Clock, Shield, Crosshair, AlertTriangle, CheckCircle2, Activity, BarChart3 } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
 
 function formatTimestamp(ts) {
     if (!ts) return '--';
@@ -143,6 +144,32 @@ export default function IncidentReport({ report }) {
                         </div>
                     </div>
                 )}
+
+                {/* Mini Visualization */}
+                <div className="h-[80px] w-full bg-black/40 rounded-lg border border-white/5 p-1 relative overflow-hidden">
+                    <div className="absolute top-1 left-2 z-10 flex items-center gap-1 opacity-50">
+                        <BarChart3 className="w-2.5 h-2.5 text-neon-cyan" />
+                        <span className="text-[8px] font-mono text-neon-cyan uppercase">Threat Waveform</span>
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={timeline.slice(-10).map((t, i) => ({ val: t.risk_score, i }))}>
+                            <Area
+                                type="monotone"
+                                dataKey="val"
+                                stroke="#00FFFF"
+                                fill="url(#colorVal)"
+                                strokeWidth={1}
+                                isAnimationActive={false}
+                            />
+                            <defs>
+                                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#00FFFF" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#00FFFF" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
 
                 {/* Recommendations */}
                 <div>

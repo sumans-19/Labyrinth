@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from honeypot import HoneypotSession, DEMO_COMMANDS, DAVE_MESSAGE, KILL_CHAIN_PHASES, PDFReportHandler
 from scanner import scan_code
+from ssh_server import start_ssh_honeypot
 
 app = FastAPI(title="Labyrinth Forge — DevSecOps Shield v2.0", version="2.0.0")
 
@@ -28,18 +29,44 @@ app.add_middleware(
 # ── Global state ─────────────────────────────────────
 sessions: dict[str, HoneypotSession] = {}
 monitors: List[WebSocket] = []
+main_loop = None
+
+@app.on_event("startup")
+async def startup_event():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
+    # Start SSH Honeypot in background
+    print("[*] Initializing SSH Honeypot...")
+    
+    def thread_safe_broadcast(message):
+        if main_loop:
+            asyncio.run_coroutine_threadsafe(broadcast_to_monitors(message), main_loop)
+        
+    start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
 
 async def broadcast_to_monitors(message: dict):
     """Send a message to all connected monitor UIs."""
+    if not monitors:
+        # print("DEBUG: No monitors connected.")
+        return
+        
+    print(f"[*] Broadcasting {message.get('type')} to {len(monitors)} monitor(s)")
     disconnected = []
     for ws in monitors:
         try:
-            await ws.send_json(message)
-        except Exception:
+            # Check if socket is still open before sending
+            if ws.client_state.value == 1: # CONNECTED
+                await ws.send_json(message)
+            else:
+                disconnected.append(ws)
+        except Exception as e:
+            print(f"[!] Broadcast failed for {ws.client}: {e}")
             disconnected.append(ws)
+            
     for ws in disconnected:
         if ws in monitors:
             monitors.remove(ws)
+            print(f"[*] Removed dead monitor, {len(monitors)} remaining")
 
 # ── REST Endpoints ───────────────────────────────────
 
@@ -220,13 +247,20 @@ async def attacker_ws(websocket: WebSocket):
 @app.websocket("/ws/monitor")
 async def monitor_ws(websocket: WebSocket):
     await websocket.accept()
+    print(f"[*] Monitor connected from {websocket.client}. Total monitors: {len(monitors) + 1}")
     monitors.append(websocket)
     try:
         while True:
-            await websocket.receive_text() # Keep connection alive
-    except WebSocketDisconnect:
+            # Use receive() to handle all message types including close/disconnect
+            data = await websocket.receive()
+            if data["type"] == "websocket.disconnect":
+                break
+    except Exception as e:
+        print(f"[!] Monitor WS Error ({websocket.client}): {e}")
+    finally:
         if websocket in monitors:
             monitors.remove(websocket)
+            print(f"[*] Monitor disconnected: {websocket.client}. Remaining: {len(monitors)}")
 
 # ── WebSocket — demo mode auto simulation ────────────
 @app.websocket("/ws/demo")

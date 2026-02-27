@@ -5,4 +5,4 @@ requests
 openai
 python-dotenv
 google-genai
-fpdf2==2.8.6
+reportlab==4.3.1

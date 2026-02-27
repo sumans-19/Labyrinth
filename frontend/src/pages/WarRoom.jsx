@@ -1,15 +1,15 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import AttackerTerminal from '../components/AttackerTerminal';
 import NetworkTopology from '../components/NetworkTopology';
 import HackerProfile from '../components/HackerProfile';
 import DeceptionStatus from '../components/DeceptionStatus';
 import SystemCapture from '../components/SystemCapture';
-import DecoyFiles from '../components/DecoyFiles';
 import HydraMode from '../components/HydraMode';
-import KillChainTracker from '../components/KillChainTracker';
 import ThreatPrediction from '../components/ThreatPrediction';
 import IncidentReport from '../components/IncidentReport';
 import CyberCorner from '../components/CyberCorner';
+import MatrixRain from '../components/MatrixRain';
+import ThreatIntelligenceGraph from '../components/ThreatIntelligenceGraph';
 import { Zap, Radio, Wifi, WifiOff } from 'lucide-react';
 
 export default function WarRoom() {
@@ -28,29 +28,39 @@ export default function WarRoom() {
     const [attackerIp, setAttackerIp] = useState(null);
     const [activeNodes, setActiveNodes] = useState(['entry']);
     const [hydraMode, setHydraMode] = useState('ubuntu');
-    const [attackIntel, setAttackIntel] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [reportData, setReportData] = useState(null);
+    const [commands, setCommands] = useState([]);
     const wsRef = useRef(null);
     const termRef = useRef(null);
 
     /* ── Start Live Monitor ── */
+    /* ── Start Live Monitor ── */
     const startLiveMonitor = useCallback(() => {
-        if (liveActive || demoActive) return;
+        // Prevent multiple connections
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+
         setLiveActive(true);
+        setDemoActive(false); // Ensure demo is off
         setIsolated(false);
         setReportData(null);
-        setAttackIntel(null);
         setPrediction(null);
         setDeceptionPhase('🛰️ Awaiting connection from local CLI...');
         setActiveNodes(['entry']);
 
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/monitor`);
+        const host = window.location.host; // Use Vite proxy
+        const ws = new WebSocket(`${protocol}://${host}/ws/monitor`);
         wsRef.current = ws;
+
+        ws.onopen = () => {
+            console.log("Monitor WebSocket connected");
+            setDeceptionPhase('🛰️ Live monitor ACTIVE - Awaiting hacker...');
+        };
 
         ws.onmessage = (event) => {
             const msg = JSON.parse(event.data);
+            console.log("Monitor received:", msg.type);
 
             if (msg.type === 'init') {
                 setAttackerIp(msg.attacker_ip);
@@ -62,27 +72,26 @@ export default function WarRoom() {
 
             if (msg.type === 'command') {
                 termRef.current?.writeln(`\x1b[1;32m${msg.prompt}\x1b[0m${msg.command}`);
-                if (msg.output) termRef.current?.writeln(msg.output);
+                if (msg.output) termRef.current?.writeln(msg.output.replace(/\n/g, '\r\n'));
                 termRef.current?.writeln('');
                 if (msg.profile) setProfile(msg.profile);
-                if (msg.attack_intel) setAttackIntel(msg.attack_intel);
                 if (msg.prediction) setPrediction(msg.prediction);
+                if (msg.command) setCommands(prev => [...prev, msg.command]);
 
                 if (msg.risk_event) {
                     setDeceptionPhase(`⚠ HIGH RISK COMMAND: ${msg.command.substring(0, 20)}...`);
                 }
 
-                // Progress nodes
+                // Progress nodes based on command count or specific commands
                 const cmdCount = msg.profile?.commands_executed || 0;
-                if (cmdCount >= 3) setActiveNodes(prev => [...new Set([...prev, 'honeypot'])]);
-                if (cmdCount >= 6) setActiveNodes(prev => [...new Set([...prev, 'fakedb'])]);
-                if (cmdCount >= 10) setActiveNodes(prev => [...new Set([...prev, 'internal'])]);
+                if (cmdCount >= 1) setActiveNodes(prev => [...new Set([...prev, 'honeypot'])]);
+                if (cmdCount >= 4) setActiveNodes(prev => [...new Set([...prev, 'fakedb'])]);
+                if (cmdCount >= 8) setActiveNodes(prev => [...new Set([...prev, 'internal'])]);
             }
 
             if (msg.type === 'isolated') {
                 setIsolated(true);
                 if (msg.report) setReportData(msg.report);
-                if (msg.attack_intel) setAttackIntel(msg.attack_intel);
                 termRef.current?.writeln(`\n\x1b[1;31m${'═'.repeat(50)}\x1b[0m`);
                 termRef.current?.writeln(`\x1b[1;31m  ${msg.message}\x1b[0m`);
                 termRef.current?.writeln(`\x1b[1;31m${'═'.repeat(50)}\x1b[0m\n`);
@@ -91,11 +100,17 @@ export default function WarRoom() {
             }
         };
 
+        ws.onerror = (err) => {
+            console.error("Monitor WebSocket error:", err);
+            setDeceptionPhase('❌ Connection error');
+        };
+
         ws.onclose = () => {
+            console.log("Monitor WebSocket closed");
             setLiveActive(false);
             setDeceptionPhase('🔌 Monitor disconnected');
         };
-    }, [liveActive, demoActive]);
+    }, []);
 
     /* ── Start demo simulation ── */
     const startDemo = useCallback(() => {
@@ -103,7 +118,6 @@ export default function WarRoom() {
         setDemoActive(true);
         setIsolated(false);
         setReportData(null);
-        setAttackIntel(null);
         setPrediction(null);
         setDeceptionPhase('');
         setActiveNodes(['entry']);
@@ -125,8 +139,8 @@ export default function WarRoom() {
                 if (msg.output) termRef.current?.writeln(msg.output);
                 termRef.current?.writeln('');
                 if (msg.profile) setProfile(msg.profile);
-                if (msg.attack_intel) setAttackIntel(msg.attack_intel);
                 if (msg.prediction) setPrediction(msg.prediction);
+                if (msg.command) setCommands(prev => [...prev, msg.command]);
 
                 // Progress nodes
                 const cmdCount = msg.profile?.commands_executed || 0;
@@ -147,7 +161,6 @@ export default function WarRoom() {
             if (msg.type === 'isolated') {
                 setIsolated(true);
                 if (msg.report) setReportData(msg.report);
-                if (msg.attack_intel) setAttackIntel(msg.attack_intel);
                 termRef.current?.writeln(`\n\x1b[1;31m${'═'.repeat(50)}\x1b[0m`);
                 termRef.current?.writeln(`\x1b[1;31m  ${msg.message}\x1b[0m`);
                 termRef.current?.writeln(`\x1b[1;31m${'═'.repeat(50)}\x1b[0m\n`);
@@ -166,14 +179,26 @@ export default function WarRoom() {
         };
     }, [demoActive]);
 
+    useEffect(() => {
+        // Only run on mount once
+        startLiveMonitor();
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.onclose = null; // Prevent state update on unmount
+                wsRef.current.close();
+            }
+        };
+    }, []); // Empty deps for mount only
+
     return (
-        <div className="max-w-[1600px] mx-auto px-4 py-6">
+        <div className="relative max-w-[1600px] mx-auto px-4 py-6">
+            <MatrixRain />
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${demoActive ? 'bg-neon-red animate-pulse' : isolated ? 'bg-neon-green' : 'bg-gray-600'}`} />
                     <h1 className="font-[Orbitron] text-2xl font-bold text-white text-glow-blue relative">
-                        WAR ROOM
+                        EXTERNAL THREAT
                         <CyberCorner position="top-right" className="text-neon-blue -top-2 -right-6 !w-4 !h-4" />
                     </h1>
                     {attackerIp && (
@@ -210,12 +235,10 @@ export default function WarRoom() {
                 </div>
             </div>
 
-            {/* ── Kill Chain Tracker (Full Width) ── */}
-            {attackIntel && (
-                <div className="mb-4 animate-slide-up">
-                    <KillChainTracker attackIntel={attackIntel} />
-                </div>
-            )}
+            {/* ── Threat Intelligence Graph (Full Width) ── */}
+            <div className="mb-4 animate-slide-up">
+                <ThreatIntelligenceGraph profile={profile} commands={commands} />
+            </div>
 
             {/* ── Dashboard Grid ── */}
             <div className="grid grid-cols-12 gap-4">
@@ -238,16 +261,14 @@ export default function WarRoom() {
                     </div>
                 </div>
 
-                {/* Bottom: Network + Decoys / Report */}
-                <div className="col-span-12 lg:col-span-7">
-                    <NetworkTopology activeNodes={activeNodes} />
+                {/* Bottom: Network (Full Width) */}
+                <div className="col-span-12">
+                    <NetworkTopology activeNodes={activeNodes} commands={commands} />
                 </div>
 
-                <div className="col-span-12 lg:col-span-5">
-                    {isolated && reportData ? (
+                <div className="col-span-12">
+                    {isolated && reportData && (
                         <IncidentReport report={reportData} />
-                    ) : (
-                        <DecoyFiles />
                     )}
                 </div>
             </div>

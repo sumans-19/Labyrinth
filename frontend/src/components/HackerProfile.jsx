@@ -1,5 +1,5 @@
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { UserX, Brain, Flame, Clock, AlertTriangle, Terminal } from 'lucide-react';
+import { UserX, Brain, Flame, Clock, AlertTriangle, Terminal, ShieldAlert, Cpu, Laptop, HardDrive } from 'lucide-react';
 
 function GaugeMini({ value, max, color, label }) {
     const data = [{ value, fill: color }];
@@ -86,6 +86,43 @@ export default function HackerProfile({ profile }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Reverse Hack Intel */}
+                {profile.reverse_hack && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <ShieldAlert className="w-3.5 h-3.5 text-neon-cyan" />
+                            <span className="font-[Orbitron] text-[10px] font-bold text-neon-cyan uppercase tracking-widest">Reverse Hack Intel</span>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2 rounded bg-cyan-500/5 border border-cyan-500/10">
+                                <div className="flex items-center gap-2">
+                                    <Laptop className="w-3 h-3 text-neon-cyan" />
+                                    <span className="text-[10px] text-gray-400">Device</span>
+                                </div>
+                                <span className="text-[10px] text-white font-mono">{profile.reverse_hack.device_name}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 rounded bg-purple-500/5 border border-purple-500/10">
+                                <div className="flex items-center gap-2">
+                                    <Cpu className="w-3 h-3 text-neon-purple" />
+                                    <span className="text-[10px] text-gray-400">System</span>
+                                </div>
+                                <span className="text-[10px] text-white font-mono">{profile.reverse_hack.os} ({profile.reverse_hack.cpu_arch})</span>
+                            </div>
+                            <div className="p-2 rounded bg-red-500/5 border border-red-500/10">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <HardDrive className="w-3 h-3 text-neon-red" />
+                                    <span className="text-[10px] text-gray-400">Stolen Data Trace</span>
+                                </div>
+                                <ul className="text-[9px] text-red-400/80 font-mono list-disc list-inside">
+                                    {profile.reverse_hack.stolen_data_clues.map((clue, i) => (
+                                        <li key={i}>{clue}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

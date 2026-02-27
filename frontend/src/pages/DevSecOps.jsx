@@ -62,7 +62,7 @@ export default function DevSecOps() {
                     </div>
                     <div>
                         <h1 className="font-[Orbitron] text-3xl font-black text-white tracking-widest uppercase">
-                            Shield Engine
+                            Vulnerability Detector
                         </h1>
                         <p className="text-xs text-gray-500 font-mono tracking-widest uppercase mt-1">
                             Deterministic Vulnerability Analysis & Remediation

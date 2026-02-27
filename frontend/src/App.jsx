@@ -3,13 +3,15 @@ import CyberGrid from './components/CyberGrid';
 import LandingPage from './pages/LandingPage';
 import WarRoom from './pages/WarRoom';
 import DevSecOps from './pages/DevSecOps';
+import InternalThreat from './pages/InternalThreat';
 import CyberCorner from './components/CyberCorner';
-import { Shield, Swords, Code2, Home } from 'lucide-react';
+import { Shield, Swords, Code2, Home, ShieldAlert } from 'lucide-react';
 
 const TABS = [
   { id: 'landing', label: 'Home', icon: Home },
-  { id: 'warroom', label: 'War Room', icon: Swords },
-  { id: 'devsecops', label: 'Shield Engine', icon: Code2 },
+  { id: 'warroom', label: 'External Threat', icon: Swords },
+  { id: 'devsecops', label: 'Vulnerability Detector', icon: Code2 },
+  { id: 'internalthreat', label: 'Internal Threat', icon: ShieldAlert },
 ];
 
 export default function App() {
@@ -67,6 +69,7 @@ export default function App() {
         {activeTab === 'landing' && <LandingPage onNavigate={setActiveTab} />}
         {activeTab === 'warroom' && <WarRoom />}
         {activeTab === 'devsecops' && <DevSecOps />}
+        {activeTab === 'internalthreat' && <InternalThreat />}
       </main>
     </div>
   );
