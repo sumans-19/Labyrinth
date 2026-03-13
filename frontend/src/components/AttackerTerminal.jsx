@@ -68,11 +68,19 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
         terminal.writeln('\x1b[90mClick "Start Live Attack Simulation" to begin.\x1b[0m');
         terminal.writeln('');
 
-        const handleResize = () => fitAddon.fit();
+        const handleResize = () => {
+            try { fitAddon.fit(); } catch (e) { /* ignore */ }
+        };
         window.addEventListener('resize', handleResize);
+
+        const resizeObserver = new ResizeObserver(handleResize);
+        if (termDivRef.current) {
+            resizeObserver.observe(termDivRef.current);
+        }
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
             terminal.dispose();
         };
     }, []);
@@ -80,7 +88,7 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
     const modeLabel = { ubuntu: 'Ubuntu 20.04 LTS', windows: 'Windows Server 2019', iot: 'IoT Gateway v2.3' }[mode] || mode;
 
     return (
-        <div className="glass-card overflow-hidden scanline-overlay">
+        <div className="glass-card overflow-hidden scanline-overlay h-full flex flex-col min-h-[420px]">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/30">
                 <div className="flex items-center gap-2">
@@ -98,7 +106,7 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
             </div>
 
             {/* Terminal */}
-            <div ref={termDivRef} className="h-[420px]" />
+            <div ref={termDivRef} className="flex-1 w-full min-h-0 bg-[#0d1117] relative p-2" />
         </div>
     );
 });

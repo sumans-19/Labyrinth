@@ -3,6 +3,7 @@ import time
 import os
 import json
 import sys
+import logging
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor, black, white
@@ -120,7 +121,7 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
     cmd_base = command.strip().split()[0] if command.strip() else ""
     
     # 1. Deterministic Rule Book (High Speed)
-    if cmd_base in ["ls", "dir", "cd", "pwd", "whoami", "id"]:
+    if cmd_base in ["ls", "dir", "cd", "pwd", "whoami", "id", "chmod"]:
         return None # Let standard logic handle these
     
     if cmd_base == "netstat" or cmd_base == "ss":
@@ -129,11 +130,17 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
     # 2. Local AI Generation
     try:
         os_desc = "Ubuntu 20.04" if mode == "ubuntu" else "Windows Server"
-        prompt = f"SYSTEM: You are a {os_desc} terminal. CWD: {cwd}. Respond to: {command}"
+        # Enhanced prompt for more realistic context handling
+        system_context = f"You are a realistic {os_desc} terminal."
+        if command.strip().startswith("sudo"):
+            system_context += " The user is running this with SUDO privileges. Act as root."
+        
+        prompt = f"SYSTEM: {system_context} CWD: {cwd}. Respond with ONLY the terminal output to: {command}"
         response = shield_ai.generate(prompt)
         if response:
             return response.replace("```", "").strip()
-    except Exception:
+    except Exception as e:
+        logging.error(f"AI Generation Error: {e}")
         pass # Silent fallback
 
     return None
@@ -426,9 +433,21 @@ LISTEN  0       128     0.0.0.0:80           0.0.0.0:*          nginx
 LISTEN  0       128     0.0.0.0:443          0.0.0.0:*          nginx
 LISTEN  0       128     127.0.0.1:5432       0.0.0.0:*          postgres
 LISTEN  0       128     127.0.0.1:6379       0.0.0.0:*          redis-server"""
-        if cmd.startswith("cat /etc/shadow") or cmd.startswith("sudo"):
+        if cmd.startswith("cat /etc/shadow"):
             self.frustration = min(100, self.frustration + 10)
             return f"bash: permission denied"
+
+        # ── EDITOR MOCKS (Nano / Gedit) ──
+        if cmd.startswith("nano "):
+            filename = cmd[5:].strip() or "new_file"
+            upper = "  GNU nano 6.2".ljust(30) + filename.center(20) + "Modified".rjust(30)
+            content = "\n" * 10 + "      [ File is empty or protected ]" + "\n" * 10
+            lower = "^G Get Help  ^O Write Out  ^W Where Is  ^K Cut Text    ^J Justify    ^C Cur Pos\n^X Exit      ^R Read File  ^\\ Replace   ^U Uncut Text  ^T To Linter  ^_ Go To Line"
+            return f"\x1b[7m{upper}\x1b[0m\n{content}\n\x1b[7m{lower}\x1b[0m"
+
+        if cmd.startswith("gedit "):
+            return f"Opening gedit window on display :0.0...\n(gedit:14230): Gtk-WARNING **: 10:25:35.123: cannot open display: :0.0\nTry: ssh -X user@host to enable X11 forwarding."
+
         if cmd == "ps aux":
             return """USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 root         1  0.0  0.1 225816  9428 ?        Ss   Jan15   0:03 /sbin/init
@@ -439,12 +458,58 @@ sysadmin 14230  0.0  0.1  21464  5024 pts/0    Ss   10:23   0:00 -bash
 sysadmin 14285  0.0  0.0  38376  3408 pts/0    R+   10:25   0:00 ps aux"""
         if cmd == "history":
             return "\n".join([f"  {i+1}  {h['cmd']}" for i, h in enumerate(self.history[-20:])])
+
+        # ── ADDITIONAL TOOLS (Mocked for realism) ──
+        if cmd.startswith("chmod "):
+            parts = cmd.split()
+            if len(parts) < 3:
+                return "chmod: missing operand"
+            return "" # Silent success
+
+        if cmd.startswith("chown "):
+            parts = cmd.split()
+            if len(parts) < 3:
+                return "chown: missing operand"
+            return "" # Silent success
+
+        if cmd.startswith("stat "):
+            fpath = cmd[5:].strip()
+            if not fpath.startswith("/"):
+                fpath = self.cwd.rstrip("/") + "/" + fpath
+            if fpath in self.fs or fpath in FILE_CONTENTS:
+                return f"  File: {fpath}\n  Size: {random.randint(100, 5000)} \tBlocks: 8          IO Block: 4096   regular file\nDevice: 801h/2049d\tInode: {random.randint(100000, 999999)}    Links: 1\nAccess: (0644/-rw-r----)  Uid: ( 1000/sysadmin)   Gid: ( 1000/sysadmin)"
+            return f"stat: cannot stat '{fpath}': No such file or directory"
+
+        if cmd == "lscpu":
+            return """Architecture:            x86_64
+  CPU op-mode(s):        32-bit, 64-bit
+  Address sizes:         39 bits physical, 48 bits virtual
+  Byte Order:            Little Endian
+CPU(s):                  4
+  On-line CPU(s) list:   0-3
+Vendor ID:               GenuineIntel
+  Model name:            Intel(R) Xeon(R) CPU @ 2.20GHz"""
+
+        if cmd.startswith("apt "):
+            return "E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied)\nE: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?"
+
+        if cmd.startswith("sudo apt "):
+            sub = cmd[9:].strip()
+            if sub == "update":
+                return "Hit:1 http://archive.ubuntu.com/ubuntu focal InRelease\nReading package lists... Done"
+            if sub.startswith("install "):
+                pkg = sub[8:].strip()
+                return f"Reading package lists... Done\nBuilding dependency tree       \nReading state information... Done\n{pkg} is already the newest version (1.2.3-1)."
+            return f"apt {sub}: command not found" # Realistic for some subcommands
+        
         if cmd == "":
             return ""
-        # Fall back to Ollama AI for unrecognized commands
+        
+        # FINAL FALLBACK: Local AI Generation (Crucial for complex pipes/commands)
         ai_response = _ask_ai(cmd, self.mode, self.cwd)
         if ai_response:
             return ai_response
+            
         return f"-bash: {cmd.split()[0]}: command not found"
 
     def _windows_cmd(self, cmd: str) -> str:

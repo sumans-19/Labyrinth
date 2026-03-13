@@ -10,7 +10,10 @@ export default function DeceptionStatus({ phase, active }) {
 
     useEffect(() => {
         if (phase) {
-            setLog(prev => [...prev.slice(-6), { text: phase, time: new Date().toLocaleTimeString() }]);
+            setLog(prev => {
+                if (prev.find(l => l.text === phase)) return prev;
+                return [...prev.slice(-6), { text: phase, time: new Date().toLocaleTimeString() }];
+            });
         }
     }, [phase]);
 

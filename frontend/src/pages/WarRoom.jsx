@@ -37,8 +37,12 @@ export default function WarRoom() {
     /* ── Start Live Monitor ── */
     /* ── Start Live Monitor ── */
     const startLiveMonitor = useCallback(() => {
-        // Prevent multiple connections
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+        // Close existing connection if any
+        if (wsRef.current) {
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+            wsRef.current = null;
+        }
 
         setLiveActive(true);
         setDemoActive(false); // Ensure demo is off
@@ -49,7 +53,7 @@ export default function WarRoom() {
         setActiveNodes(['entry']);
 
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = window.location.host; // Use Vite proxy
+        const host = window.location.hostname + ':8000'; // Bypass Vite proxy
         const ws = new WebSocket(`${protocol}://${host}/ws/monitor`);
         wsRef.current = ws;
 
@@ -114,8 +118,15 @@ export default function WarRoom() {
 
     /* ── Start demo simulation ── */
     const startDemo = useCallback(() => {
-        if (demoActive) return;
+        // Close existing connection if any
+        if (wsRef.current) {
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+
         setDemoActive(true);
+        setLiveActive(false); // Ensure live is off
         setIsolated(false);
         setReportData(null);
         setPrediction(null);
@@ -123,8 +134,13 @@ export default function WarRoom() {
         setActiveNodes(['entry']);
 
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/demo`);
+        const host = window.location.hostname + ':8000'; // Bypass Vite proxy
+        const ws = new WebSocket(`${protocol}://${host}/ws/demo`);
         wsRef.current = ws;
+
+        ws.onopen = () => {
+            console.log("Demo WebSocket connected");
+        };
 
         ws.onmessage = (event) => {
             const msg = JSON.parse(event.data);
@@ -169,19 +185,20 @@ export default function WarRoom() {
             }
         };
 
-        ws.onerror = () => {
+        ws.onerror = (err) => {
+            console.error("Demo WebSocket error:", err);
             termRef.current?.writeln('\x1b[1;31m[CONNECTION ERROR] Could not reach backend. Make sure the FastAPI server is running on port 8000.\x1b[0m');
             setDemoActive(false);
         };
 
         ws.onclose = () => {
+            console.log("Demo WebSocket closed");
             setDemoActive(false);
         };
-    }, [demoActive]);
+    }, []);
 
     useEffect(() => {
-        // Only run on mount once
-        startLiveMonitor();
+        // Cleanup on unmount only — don't auto-start any mode
         return () => {
             if (wsRef.current) {
                 wsRef.current.onclose = null; // Prevent state update on unmount
