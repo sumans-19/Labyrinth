@@ -29,6 +29,8 @@ from honeypot import HoneypotSession, DEMO_COMMANDS, DAVE_MESSAGE, KILL_CHAIN_PH
 from scanner import scan_code
 from ssh_server import start_ssh_honeypot
 from generate_decoy import generate_trackable_pdf, generate_trackable_html
+from lateral_interceptor import router as lateral_router, set_broadcast_callback
+
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -75,6 +77,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Lateral Movement Interceptor Router
+app.include_router(lateral_router)
 
 def get_client_ip(request: Request):
     """Robust client IP detection for proxies like Ngrok."""
@@ -261,6 +266,9 @@ async def broadcast_to_monitors(message: dict):
             monitors.remove(ws)
             print(f"[*] Removed dead monitor, {len(monitors)} remaining")
 
+# Initialize callback for Lateral Movement Interceptor
+set_broadcast_callback(broadcast_to_monitors)
+
 # ── REST Endpoints ───────────────────────────────────
 
 class ScanRequest(BaseModel):
@@ -273,6 +281,32 @@ class CommandRequest(BaseModel):
 class ModeRequest(BaseModel):
     session_id: str
     mode: str  # "ubuntu" | "windows" | "iot"
+
+@app.get("/api/decoys/honeytokens")
+def get_honeytoken_registry():
+    """Returns the registered honeytokens (simulation helper)."""
+    registry_path = "honeytoken_registry.json"
+    if os.path.exists(registry_path):
+        with open(registry_path, "r") as f:
+            # We also need to get the actual values for the simulation to work
+            # In a real system this would be a HUGE security risk, but for this
+            # localized defensive simulation, we'll expose the .env values
+            # to the simulation portal so the 'attacker' can 'discover' them.
+            registry = json.load(f)
+            
+            # Enrich registry with actual values from decoys/.env if available
+            env_path = os.path.join("decoys", "honeytokens", ".env")
+            if os.path.exists(env_path):
+                with open(env_path, "r") as f_env:
+                    for line in f_env:
+                        if "=" in line:
+                            key, val = line.split("=", 1)
+                            # Find matching hash
+                            for h, info in registry.items():
+                                if info["type"] == key.strip():
+                                    info["raw_value"] = val.strip()
+            return registry
+    return {}
 
 @app.get("/")
 def root():

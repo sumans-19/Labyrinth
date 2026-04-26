@@ -5,6 +5,7 @@ import WarRoom from './pages/WarRoom';
 import DevSecOps from './pages/DevSecOps';
 import InternalThreat from './pages/InternalThreat';
 import TheLeakerDashboard from './pages/TheLeakerDashboard';
+import LateralMoverPortal from './pages/LateralMoverPortal';
 import CyberCorner from './components/CyberCorner';
 import { Shield, Swords, Code2, Home, ShieldAlert } from 'lucide-react';
 
@@ -72,6 +73,7 @@ export default function App() {
         {activeTab === 'devsecops' && <DevSecOps />}
         {activeTab === 'internalthreat' && <InternalThreat onNavigate={setActiveTab} />}
         {activeTab === 'leaker' && <TheLeakerDashboard onNavigate={setActiveTab} />}
+        {activeTab === 'lateral-mover' && <LateralMoverPortal onNavigate={setActiveTab} />}
       </main>
     </div>
   );

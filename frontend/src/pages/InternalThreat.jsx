@@ -92,8 +92,11 @@ export default function InternalThreat({ onNavigate }) {
                 {THREAT_PROFILES.map((tp, i) => (
                     <div
                         key={i}
-                        onClick={() => i === 0 && onNavigate ? onNavigate('leaker') : null}
-                        className={`glass-card p-8 border min-h-[280px] ${tp.border} ${tp.bg} hover:bg-black/80 transition-all duration-500 group relative overflow-hidden ${tp.glow} ${i === 0 ? 'cursor-pointer hover:scale-[1.02] hover:border-neon-red' : 'cursor-default'}`}
+                        onClick={() => {
+                            if (i === 0 && onNavigate) onNavigate('leaker');
+                            if (i === 1 && onNavigate) onNavigate('lateral-mover');
+                        }}
+                        className={`glass-card p-8 border min-h-[280px] ${tp.border} ${tp.bg} hover:bg-black/80 transition-all duration-500 group relative overflow-hidden ${tp.glow} ${[0, 1].includes(i) ? 'cursor-pointer hover:scale-[1.02] hover:border-white/50' : 'cursor-default'}`}
                     >
                         {/* Hover accent background overlay */}
                         <div className={`absolute inset-0 bg-gradient-to-b from-transparent to-black/95 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />

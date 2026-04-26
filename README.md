@@ -1,138 +1,77 @@
-# 🛡️ Labyrinth Forge: Autonomous DevSecOps Shield
+# 🛡️ Labyrinth Forge: Active Defense Deception Engine
 
-[![AI-Powered](https://img.shields.io/badge/AI--Powered-Autonomous-blueviolet?style=for-the-badge&logo=openai)](https://github.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
-
-**Labyrinth Forge** is a next-generation, AI-first DevSecOps platform designed to automate the detection, remediation, and validation of security vulnerabilities in real-time. By integrating advanced machine learning with structural code analysis, Labyrinth Forge transforms passive security scanning into an active defense mechanism.
+Labyrinth Forge is a next-generation **Active Defense & Cybersecurity Deception Engine**. It transforms your infrastructure from a passive target into a lethal maze for adversaries, using AI-powered honeypots, trackable decoys, and shadow credentials to detect, profile, and neutralize threats in real-time.
 
 ---
 
-## ✨ Key Features
+## 🚀 Core Defense Modules
 
-- **🤖 AI-First Remediation:** Automatically generates secure patches for detected vulnerabilities using state-of-the-art LLMs.
-- **🛡️ DevSecOps Shield Engine:** A multi-layered security orchestra that scans, scores, and hardens code dynamically.
-- **📊 Interactive Dashboard:** Real-time visualization of security metrics, attack surfaces, and remediation history using React, Recharts, and XYFlow.
-- **⚡ Autonomous Gatekeeping:** Structural validation prevents insecure or broken AI-generated fixes from entering production.
-- **🪤 Active Defense (Honeypots):** Intelligent decoy systems to redirect and analyze malicious traffic.
-- **📈 Security Scoring:** Every file is assigned an integrity score (0-100) before and after hardening.
-- **🚀 CI/CD Ready:** Seamless integration with GitHub Actions for automated security checks on every push.
+### 1. 🌐 External Threat Defense (War Room)
+*   **AI Honeypots**: Dynamic, high-interaction terminal sessions powered by Google Gemini. The system mimics a vulnerable server, lures attackers, and analyzes their commands to predict the next stage of the kill chain.
+*   **SSH Decoy**: A dedicated SSH honeypot (Port 2222) that captures brute-force attempts and lateral movement probes.
+*   **Live Threat Map**: A real-time WebSocket dashboard visualizing active probes with a high-tech "Oscilloscope" waveform UI.
 
----
+### 2. 🕵️ Internal Threat Monitor
+*   **The Leaker (Data Exfiltration Tracking)**:
+    *   Generates **Trackable Decoys** (PDF/HTML) embedded with stealthy "Ghost Pixels".
+    *   Provides **Forensic Intel**: Instant geolocation, ISP data, device fingerprinting, and OS detection upon file opening.
+    *   **Exfiltration Tree**: Visualizes how a single leaked file branches across different unauthorized IPs.
+*   **The Lateral Mover (Shadow Credentials)**:
+    *   **Honeytoken Generator**: Creates realistic fake `.env` and `config.json` files containing "Shadow Credentials" (AWS Keys, MongoDB URIs).
+    *   **Lateral Interceptor**: A stealthy API router that mimics internal services. It flags any request using a registered honeytoken.
+    *   **Simulation Portal**: An interactive terminal where you can assume roles (Dev, DBA, Auditor) and test the deception system yourself.
 
-## 🏗️ Architecture
-
-```mermaid
-graph TD
-    A[Source Code] --> B[DevSecOps Shield Engine]
-    B --> C{AI Security Audit}
-    C -->|Detected| D[AI Remediation]
-    D --> E[Structural Validator]
-    E -->|Valid| F[Secure Output / Hardened App]
-    E -->|Invalid| G[Veto & Alert]
-    F --> H[Dashboard & Analytics]
-    C -->|Clean| F
-    I[Active Defense/Honeypot] -.-> H
-```
+### 3. 🛡️ DevSecOps Shield (Aegis)
+*   **Aegis Scanner**: Automatically scans codebases for vulnerabilities and hardcoded secrets before they reach production.
+*   **AI Security Audit**: Uses Gemini to explain complex vulnerabilities and provide remediation steps in natural language.
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **Python 3.9+**
-- **Node.js 18+**
-- **AI Backend API Key** (Configured in `.env`)
-
-### Installation
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/your-username/LABYRINTH-FORGE.git
-   cd LABYRINTH-FORGE
-   ```
-
-2. **Backend Setup:**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Frontend Setup:**
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-
-### Configuration
-
-Create a `.env` file in the root and backend directories:
-```env
-GEMINI_API_KEY=your_key_here
-SSH_PASSWORD=your_secure_password
-```
+## 🛠️ Technology Stack
+*   **Backend**: Python (FastAPI), WebSockets, SQLite.
+*   **Frontend**: React (Vite), Tailwind CSS, Lucide Icons, Framer Motion.
+*   **AI Engine**: Google Gemini 1.5 Flash (Generative Threat Analysis).
+*   **Networking**: Integrated with Ngrok for global callback tracking.
 
 ---
 
-## 🛠️ Usage
+## 🚀 Quick Start
 
-### Running the Security Engine
-To scan and remediate a specific file:
+### 1. Backend Setup
 ```bash
-python -m devsecops_shield.main path/to/vulnerable_file.py
+cd backend
+python -m venv venv
+source venv/bin/activate  # Or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+# Set your GEMINI_API_KEY in .env
+python main.py
 ```
 
-### Starting the Platform
-- **Backend:** `python backend/main.py`
-- **Frontend:** `npm run dev` (from the `frontend` directory)
-
----
-
-## 🔧 Tooling & Automation
-
-Labyrinth Forge comes with built-in scripts to streamline DevSecOps workflows:
-
-- **GitHub Issue Creator:** A powerful CLI/Interactive tool (`scripts/create_github_issue.py`) to automate vulnerability reporting and task management directly to your repository.
-- **Environment Cleanup:** `cleanup.py` helps maintain a clean build environment and remove temporary security artifacts.
-- **Firewall & Remediation Scripts:** PowerShell scripts (`firewall_fix.ps1`, `super_fix.ps1`) for automated system-level hardening.
-
----
-
-## 🧩 Components
-
-- **`devsecops_shield`**: The core logic for AI-powered code analysis and structural validation.
-  - **Supreme AI Security Oracle:** A specialized AI agent (powered by GROQ) that performs deep cognitive audits and zero-day resilient reconstructions.
-- **`shield_engine`**: High-performance scanning and remediation modules.
-- **`backend`**: Secure API services and active defense (honeypot) implementations.
-- **`frontend`**: Modern, glassmorphic dashboard for real-time security monitoring.
-
----
-
-## 🧪 Testing
-
-Run the test suite to ensure all security modules are functioning correctly:
+### 2. Frontend Setup
 ```bash
-pytest tests/
+cd frontend
+npm install
+npm run dev
+```
+
+### 3. Initialize Traps
+Run the honeytoken generator to create your first set of shadow credentials:
+```bash
+cd backend
+python honeytoken_manager.py
 ```
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) and submit a Pull Request.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📊 Dashboard Overview
+*   **War Room**: Live external attack monitoring.
+*   **Internal Threat**: Manage trackable decoys and monitor lateral movement.
+*   **Lateral Mover Portal**: Interactive simulation environment for testing "insider threat" scenarios.
 
 ---
 
-<p align="center">
-  Built with ❤️ for a safer digital world.
-</p>
+## ⚖️ License
+This project is for educational and authorized defensive purposes only. **Labyrinth Forge** is designed to secure environments, not to harm.
+
+---
+**Built by Suman S** | *Active Defense for the Modern Era*

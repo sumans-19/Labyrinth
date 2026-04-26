@@ -303,14 +303,27 @@ export default function TheLeakerDashboard({ onNavigate }) {
                                                         </div>
                                                     </div>
                                                     <div className={`px-3 py-1 bg-${themeColor}/20 border border-${themeColor} text-${themeColor} text-[10px] font-bold tracking-widest uppercase ${!isAuthorized ? 'animate-pulse' : ''}`}>
-                                                        {isAuthorized ? 'SECURE ENVIRONMENT' : (threat.type === 'FILE_MOVEMENT_DETECTED' ? 'GEOGRAPHIC ANOMALY' : 'ISOLATION REQUIRED')}
+                                                        {isAuthorized ? 'SECURE ENVIRONMENT' : (
+                                                            threat.alert_category === 'LATERAL_MOVEMENT' 
+                                                            ? 'LATERAL MOVEMENT' 
+                                                            : (threat.type === 'FILE_MOVEMENT_DETECTED' ? 'GEOGRAPHIC ANOMALY' : 'ISOLATION REQUIRED')
+                                                        )}
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="bg-black/40 border border-white/5 rounded-lg p-4">
-                                                        <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1.5 font-bold">Leaked Asset</div>
-                                                        <div className={`text-${secondaryColor} font-bold font-mono text-base break-all`}>{threat.document_name}</div>
+                                                        <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1.5 font-bold">
+                                                            {threat.alert_category === 'LATERAL_MOVEMENT' ? 'Triggered Token' : 'Leaked Asset'}
+                                                        </div>
+                                                        <div className={`text-${secondaryColor} font-bold font-mono text-base break-all`}>
+                                                            {threat.document_name}
+                                                        </div>
+                                                        {threat.target_endpoint && (
+                                                            <div className="text-[10px] text-neon-red font-mono mt-1 opacity-80">
+                                                                Target: {threat.target_endpoint}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="bg-black/40 border border-white/5 rounded-lg p-4">
                                                         <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1.5 font-bold">{isAuthorized ? 'Owner / Source' : 'Threat Source'}</div>
