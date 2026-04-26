@@ -230,3 +230,36 @@ body {
   color: var(--color-neon-red);
   text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
+
+/* ═══ Scan Animation (for Threat Intelligence Graph) ═══ */
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(500%); }
+}
+
+/* ═══ Disabled Button State ═══ */
+.btn-neon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-neon:disabled::after {
+  display: none;
+}
+
+/* ═══ Data Flow Animation (Exfiltration Trace) ═══ */
+@keyframes data-flow {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes wave-dash {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
+}

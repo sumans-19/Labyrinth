@@ -121,7 +121,10 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
     cmd_base = command.strip().split()[0] if command.strip() else ""
     
     # 1. Deterministic Rule Book (High Speed)
-    if cmd_base in ["ls", "dir", "cd", "pwd", "whoami", "id", "chmod"]:
+    # These commands have clean, hardcoded outputs — bypass AI to avoid wrapping/formatting issues
+    if cmd_base in ["ls", "dir", "cd", "pwd", "whoami", "id", "chmod", "cat", "stat",
+                     "history", "ps", "uname", "hostname", "ifconfig", "ip", "nano",
+                     "gedit", "chown", "lscpu", "apt", "clear", ""]:
         return None # Let standard logic handle these
     
     if cmd_base == "netstat" or cmd_base == "ss":
@@ -144,6 +147,40 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
         pass # Silent fallback
 
     return None
+
+
+def _generate_dynamic_content(path: str, mode: str) -> str:
+    """Generate realistic file content using AI when a file doesn't exist."""
+    filename = path.split("/")[-1] if mode != "windows" else path.split("\\")[-1]
+    prompt = (
+        f"Generate realistic content for a file named '{filename}' located at '{path}' "
+        f"in a {mode} environment. The content should look authentic (e.g., config file, script, log, etc.). "
+        "Include realistic data, comments, and structure. Return ONLY the file content, no explanations or markdown blocks."
+    )
+    try:
+        content = shield_ai.generate(prompt)
+        if content:
+            return content.replace("```", "").strip()
+    except:
+        pass
+    return f"[Encrypted or binary data for {filename}]"
+
+
+def _generate_dynamic_ls(path: str, mode: str) -> list[str]:
+    """Generate realistic filenames for a directory that doesn't exist in preloaded data."""
+    prompt = (
+        f"Return a list of 5-10 realistic filenames (including some directories) that would exist in '{path}' "
+        f"on an {mode} system. Return ONLY the names separated by spaces, no explanations."
+    )
+    try:
+        content = shield_ai.generate(prompt)
+        if content:
+            # Clean up the output to get just names
+            names = content.replace("```", "").replace("\n", " ").split()
+            return [n.strip(",").strip() for n in names if n]
+    except:
+        pass
+    return ["log", "config", "tmp", "backup"]
 
 # ── Fake filesystem ──────────────────────────────────
 UBUNTU_FS = {
@@ -262,10 +299,21 @@ ArgoCD:            admin / @rg0_D3pl0y_K3y""",
 
 # ── Fake command outputs ─────────────────────────────
 
-def _ls_la(path: str, fs: dict) -> str:
-    contents = fs.get(path, [])
-    if not contents:
-        return f"ls: cannot access '{path}': No such file or directory"
+def _ls_la(path: str, fs: dict, mode: str = "ubuntu") -> str:
+    contents = fs.get(path)
+    if contents is None:
+        # AI Check for dynamic discovery
+        prompt = f"In an {mode} system, is '{path}' a realistic directory path? Reply with ONLY 'YES' or 'NO'."
+        try:
+            res = shield_ai.generate(prompt)
+            if "YES" in res.upper():
+                contents = _generate_dynamic_ls(path, mode)
+                fs[path] = contents
+            else:
+                return f"ls: cannot access '{path}': No such file or directory"
+        except:
+            return f"ls: cannot access '{path}': No such file or directory"
+    
     lines = [f"total {len(contents) * 4}"]
     for item in contents:
         is_dir = (path.rstrip("/") + "/" + item) in fs or (path.rstrip("/") + "/" + item).replace("/", "\\") in fs
@@ -275,10 +323,14 @@ def _ls_la(path: str, fs: dict) -> str:
     return "\n".join(lines)
 
 
-def _cat(path: str) -> str:
+def _cat(path: str, mode: str = "ubuntu") -> str:
     if path in FILE_CONTENTS:
         return FILE_CONTENTS[path]
-    return f"cat: {path}: No such file or directory"
+    
+    # Dynamic Generation Fallback
+    content = _generate_dynamic_content(path, mode)
+    FILE_CONTENTS[path] = content # Store for session consistency
+    return content
 
 
 class HoneypotSession:
@@ -287,6 +339,14 @@ class HoneypotSession:
     def __init__(self, mode: str = "ubuntu"):
         self.mode = mode
         self.cwd = "/" if mode != "windows" else "C:\\"
+        # Session-specific filesystem to allow dynamic discovery without affecting others
+        if mode == "windows":
+            self.session_fs = WINDOWS_FS.copy()
+        elif mode == "iot":
+            self.session_fs = IOT_FS.copy()
+        else:
+            self.session_fs = UBUNTU_FS.copy()
+            
         self.history: list[dict] = []
         self.frustration = 0
         self.commands_run = 0
@@ -316,11 +376,7 @@ class HoneypotSession:
 
     @property
     def fs(self):
-        if self.mode == "windows":
-            return WINDOWS_FS
-        if self.mode == "iot":
-            return IOT_FS
-        return UBUNTU_FS
+        return self.session_fs
 
     @property
     def prompt(self):
@@ -334,7 +390,7 @@ class HoneypotSession:
         """Process a shell command and return mock output."""
         self.commands_run += 1
         cmd = cmd.strip()
-        self.history.append({"cmd": cmd, "time": time.time()})
+        self.history.append({"cmd": cmd, "time": time.time(), "cwd": self.cwd})
 
         # Frustration bumps for suspicious commands
         sus = ["cat /etc/shadow", "sudo", "chmod", "wget", "curl", "nc ", "nmap", "hydra"]
@@ -344,21 +400,47 @@ class HoneypotSession:
         # ── NAVIGATION LOGIC (Maintain CWD state) ──
         if cmd.startswith("cd "):
             target = cmd[3:].strip()
-            # Simple state tracking for the prompt, but the OUTPUT will still be AI
-            if target == "..":
-                if self.mode == "windows":
+            if not target or target == "~":
+                self.cwd = "/home/sysadmin" if self.mode != "windows" else "C:\\Users\\Administrator"
+                return ""
+            
+            old_cwd = self.cwd
+            # Normalize target path
+            if self.mode == "windows":
+                if target == "..":
                     if len(self.cwd) > 3: # C:\
-                        self.cwd = self.cwd.rstrip("\\").rsplit("\\", 1)[0] + "\\"
+                        self.cwd = self.cwd.rstrip("\\").rsplit("\\", 1)[0]
+                        if len(self.cwd) == 2: self.cwd += "\\" # Back to root
+                elif ":" in target:
+                    self.cwd = target
                 else:
+                    self.cwd = self.cwd.rstrip("\\") + "\\" + target
+                return ""
+            else:
+                if target == "..":
                     parts = self.cwd.rstrip("/").rsplit("/", 1)
                     self.cwd = parts[0] if parts[0] else "/"
-            elif not target.startswith("-"): # Don't track flags
-                if self.mode == "windows":
-                    if ":" in target: self.cwd = target
-                    else: self.cwd = self.cwd.rstrip("\\") + "\\" + target + "\\"
+                elif target.startswith("/"):
+                    self.cwd = target.rstrip("/") or "/"
                 else:
-                    if target.startswith("/"): self.cwd = target
-                    else: self.cwd = self.cwd.rstrip("/") + "/" + target
+                    self.cwd = self.cwd.rstrip("/") + "/" + target
+                
+                # Check if directory is "real" or "discovered"
+                if self.cwd not in self.fs:
+                    # AI Check: Is this a realistic directory?
+                    prompt = f"In an {self.mode} system, is '{self.cwd}' a realistic directory path? Reply with ONLY 'YES' or 'NO'."
+                    try:
+                        res = shield_ai.generate(prompt)
+                        if "YES" in res.upper():
+                            # Discover it!
+                            self.fs[self.cwd] = _generate_dynamic_ls(self.cwd, self.mode)
+                        else:
+                            # Revert and error
+                            self.cwd = old_cwd
+                            return f"-bash: cd: {target}: No such file or directory"
+                    except:
+                        pass # Allow it anyway for "infinite" honeypot feel
+                return ""
 
         # ── GEMINI GENERATION (The "Answer") ──
         ai_response = _ask_ai(cmd, self.mode, self.cwd)
@@ -387,21 +469,7 @@ class HoneypotSession:
         if cmd == "pwd":
             return self.cwd
         if cmd.startswith("cd "):
-            target = cmd[3:].strip()
-            if target == "..":
-                parts = self.cwd.rstrip("/").rsplit("/", 1)
-                self.cwd = parts[0] if parts[0] else "/"
-            elif target.startswith("/"):
-                if target.rstrip("/") in self.fs or target in self.fs:
-                    self.cwd = target.rstrip("/") or "/"
-                else:
-                    return f"-bash: cd: {target}: No such file or directory"
-            else:
-                new = self.cwd.rstrip("/") + "/" + target
-                if new in self.fs:
-                    self.cwd = new
-                else:
-                    return f"-bash: cd: {target}: No such file or directory"
+            # cd logic is now handled in process_command to avoid redundant state updates
             return ""
         if cmd.startswith("ls"):
             path = self.cwd
@@ -411,16 +479,27 @@ class HoneypotSession:
             if args:
                 path = args[0] if args[0].startswith("/") else self.cwd.rstrip("/") + "/" + args[0]
             if any("-l" in f for f in flags) or "-la" in cmd:
-                return _ls_la(path, self.fs)
-            contents = self.fs.get(path, [])
-            if not contents:
-                return f"ls: cannot access '{path}': No such file or directory"
+                return _ls_la(path, self.fs, self.mode)
+            contents = self.fs.get(path)
+            if contents is None:
+                # AI Check for dynamic discovery
+                prompt = f"In an {self.mode} system, is '{path}' a realistic directory path? Reply with ONLY 'YES' or 'NO'."
+                try:
+                    res = shield_ai.generate(prompt)
+                    if "YES" in res.upper():
+                        contents = _generate_dynamic_ls(path, self.mode)
+                        self.fs[path] = contents
+                    else:
+                        return f"ls: cannot access '{path}': No such file or directory"
+                except:
+                    return f"ls: cannot access '{path}': No such file or directory"
+            
             return "  ".join(contents)
         if cmd.startswith("cat "):
             fpath = cmd[4:].strip()
             if not fpath.startswith("/"):
                 fpath = self.cwd.rstrip("/") + "/" + fpath
-            return _cat(fpath)
+            return _cat(fpath, self.mode)
         if cmd == "ifconfig" or cmd == "ip addr":
             return """eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 10.0.1.42  netmask 255.255.255.0  broadcast 10.0.1.255
@@ -573,9 +652,14 @@ Domain:                    acme.local"""
             path = self.cwd
             parts = cmd.split()
             args = [p for p in parts[1:] if not p.startswith("-")]
-            if args:
-                path = args[0]
-            return _ls_la(path, self.fs) if "-l" in cmd else "  ".join(self.fs.get(path, ["(empty)"]))
+            if "-l" in cmd:
+                return _ls_la(path, self.fs, self.mode)
+            
+            contents = self.fs.get(path)
+            if contents is None:
+                contents = _generate_dynamic_ls(path, self.mode)
+                self.fs[path] = contents
+            return "  ".join(contents)
         if cmd == "pwd":
             return self.cwd
         # Fall back to Ollama AI for unrecognized commands
@@ -594,44 +678,55 @@ Domain:                    acme.local"""
         high = ["sudo", "nmap", "hydra", "wget", "curl", "chmod +x", "base64", "grep -r"]
         medium = ["cat ", "ls -la", "ping ", "find ", "ps aux"]
 
-        if any(p in cmd for p in critical): score += 40
-        elif any(p in cmd for p in high): score += 25
-        elif any(p in cmd for p in medium): score += 10
+        if any(p in cmd for p in critical): score += 60
+        elif any(p in cmd for p in high): score += 40
+        elif any(p in cmd for p in medium): score += 20
         
         # Obfuscation detections
-        if "base64" in cmd and "|" in cmd: score += 15
-        if "${" in cmd: score += 10 # Variable expansion
+        if "base64" in cmd and "|" in cmd: score += 20
+        if "${" in cmd: score += 15 # Variable expansion
+        if "&&" in cmd or "||" in cmd: score += 10 # Chained commands
         
-        return min(40, score) # Max 40 per single command
+        return min(100, score)
 
     def get_profile(self) -> dict:
-        """Return hacker profile analysis. Determinism-first logic with local AI refinement."""
-        # 1. Base rule-based metrics
+        """Return hacker profile analysis. Dynamic AI assessment on every command."""
+        # 1. Base rule-based metrics (Fallbacks)
         skill = "Script Kiddie"
-        if self.commands_run > 10: skill = "Intermediate"
-        if self.commands_run > 20: skill = "Advanced"
+        if self.commands_run > 5: skill = "Intermediate"
+        if self.commands_run > 15: skill = "Advanced"
         
-        threat = min(100, self.commands_run * 3 + self.frustration)
+        classification = "Automated Bot" if self.commands_run < 3 else "Potential Human Actor"
         
-        # 2. Local AI Assesment (Conserve resources, only every 10 cmds)
-        if self.commands_run % 10 == 0:
-            try:
-                history_str = "\n".join([f"> {h['cmd']}" for h in self.history[-10:]])
-                prompt = f"Analyze intent: {history_str}. Return JSON: {{'skill': str, 'threat': int}}"
-                ai_data = shield_ai.generate(prompt, json_format=True)
-                if isinstance(ai_data, dict):
-                    skill = ai_data.get("skill", skill)
-                    threat = ai_data.get("threat", threat)
-            except:
-                pass
+        # Threat level increases with command count, riskiness of commands, and frustration
+        recent_risks = sum(self.calculate_command_risk(h["cmd"]) for h in self.history[-3:])
+        threat = min(100, (self.commands_run * 4) + (self.frustration // 2) + recent_risks)
+        
+        # 2. Dynamic AI Assesment (Now on every command for live feedback)
+        try:
+            history_str = "\n".join([f"> {h['cmd']}" for h in self.history[-5:]])
+            prompt = (
+                f"Analyze attacker intent based on history:\n{history_str}\n"
+                f"CWD: {self.cwd}\n"
+                f"Return JSON only: {{\"skill\": \"Script Kiddie|Intermediate|Advanced|Elite\", "
+                f"\"threat\": int(0-100), \"classification\": \"Bot|Targeted Human|Inside Threat|Red Team\"}}"
+            )
+            ai_data = shield_ai.generate(prompt, json_format=True)
+            if isinstance(ai_data, dict):
+                skill = ai_data.get("skill", skill)
+                threat = ai_data.get("threat", threat)
+                classification = ai_data.get("classification", classification)
+        except:
+            pass
 
         return {
             "threat_level": threat,
             "skill_level": skill,
+            "classification": classification,
             "frustration_index": self.frustration,
             "commands_executed": self.commands_run,
             "session_duration": round(time.time() - self.start_time, 1),
-            "suspicious_commands": sum(1 for c in self.history if self.calculate_command_risk(c["cmd"]) > 15),
+            "suspicious_commands": sum(1 for c in self.history if self.calculate_command_risk(c["cmd"]) > 20),
             "reverse_hack": self.reverse_hack_intel,
         }
 
@@ -1007,15 +1102,15 @@ DEMO_COMMANDS = [
     ("cat /etc/shadow", 1.0),
 ]
 
-DAVE_MESSAGE = """
-╔══════════════════════════════════════════════════╗
-║  💬  Message from dave_it@acme-corp.internal     ║
-╠══════════════════════════════════════════════════╣
-║                                                  ║
-║  Hey, are you fixing ticket #902?                ║
-║  The DB migration script is failing again.       ║
-║  Password for staging is: Stg_@dm1n_2024!       ║
-║                                                  ║
-║  - Dave from IT                                  ║
-╚══════════════════════════════════════════════════╝
-"""
+DAVE_MESSAGE = "\n".join([
+    "+--------------------------------------------------+",
+    "|  Message from dave_it@acme-corp.internal          |",
+    "+--------------------------------------------------+",
+    "|                                                   |",
+    "|  Hey, are you fixing ticket #902?                 |",
+    "|  The DB migration script is failing again.        |",
+    "|  Password for staging is: Stg_@dm1n_2024!        |",
+    "|                                                   |",
+    "|  - Dave from IT                                   |",
+    "+--------------------------------------------------+",
+])

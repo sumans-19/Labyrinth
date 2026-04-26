@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Download, Target, ChevronLeft, ShieldAlert, FileText, Server, HardDrive, Key, Copy, Check, Database, MapPin, ArrowRight, Globe, AlertTriangle } from 'lucide-react';
+import { Download, Target, ChevronLeft, ShieldAlert, FileText, Server, HardDrive, Key, Copy, Check, Database, MapPin, ArrowRight, Globe, AlertTriangle, Smartphone, Laptop, RefreshCw } from 'lucide-react';
 
 export default function TheLeakerDashboard({ onNavigate }) {
     const [internalThreats, setInternalThreats] = useState([]);
@@ -137,10 +137,20 @@ export default function TheLeakerDashboard({ onNavigate }) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left Column: Live Alerts Queue */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
-                    <h2 className="font-[Orbitron] text-lg font-bold text-white tracking-wider py-2 border-b border-white/5 flex items-center gap-3">
-                        <span className="text-neon-red animate-pulse">●</span>
-                        LIVE THREAT FEED & TRACE MAP
-                    </h2>
+                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                        <h2 className="font-[Orbitron] text-lg font-bold text-white tracking-wider flex items-center gap-3">
+                            <span className="text-neon-red animate-pulse">●</span>
+                            LIVE THREAT FEED & TRACE MAP
+                        </h2>
+                        
+                        <button 
+                            onClick={() => { setInternalThreats([]); setMovementHistory({}); }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-widest uppercase text-gray-400 hover:text-white border border-white/10 hover:border-white/30 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Clear Feed
+                        </button>
+                    </div>
 
                     {/* Exfiltration Trace Map */}
                     {Object.keys(movementHistory).length > 0 && (
@@ -161,51 +171,96 @@ export default function TheLeakerDashboard({ onNavigate }) {
                                             <span className="text-[10px] font-mono text-neon-red animate-pulse">MOVE DETECTED</span>
                                         </div>
 
-                                        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 py-4">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className={`p-4 rounded-full ${move.is_authorized ? 'bg-neon-green/10 border-neon-green ring-4 ring-neon-green/20' : 'bg-white/5 border-white/10'}`}>
-                                                    <MapPin className={`w-8 h-8 ${move.is_authorized ? 'text-neon-green' : 'text-neon-blue'}`} />
-                                                </div>
-                                                <div className="text-center">
-                                                    <div className="text-[10px] text-gray-500 font-mono uppercase">Authorized Origin</div>
-                                                    <div className={`text-sm font-bold font-mono ${move.is_authorized ? 'text-neon-green' : 'text-white'}`}>{move.origin_ip}</div>
-                                                </div>
-                                            </div>
+                                        {(() => {
+                                            const uniqueProbes = move.history
+                                                ? Array.from(new Set(move.history.filter(h => h.status === 'UNAUTHORIZED').map(h => h.ip)))
+                                                : (move.is_authorized ? [] : [move.current_ip]);
 
-                                            {!move.is_authorized && (
-                                                <>
-                                                    <div className="flex-1 max-w-[200px] h-[2px] bg-gradient-to-r from-neon-blue via-neon-red to-neon-red relative">
-                                                        <div className="absolute top-1/2 left-0 right-0 h-1 bg-neon-red/50 blur-sm animate-pulse -translate-y-1/2" />
-                                                        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-4 h-4 rounded-full bg-neon-red animate-ping-fast shadow-[0_0_15px_#ef4444]" />
-                                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-mono text-neon-red font-bold animate-bounce uppercase">
-                                                            <ArrowRight className="w-3 h-3" /> Exfiltrating
+                                            return (
+                                                <div className="flex flex-col md:flex-row items-stretch justify-center py-6 w-full relative min-h-[150px]">
+                                                    {/* 1. Left Node: Authorized Origin */}
+                                                    <div className="flex flex-col items-center justify-center min-w-[200px] z-10">
+                                                        <div className={`p-4 rounded-full ${move.is_authorized ? 'bg-neon-green/10 border-neon-green ring-4 ring-neon-green/20' : 'bg-white/5 border-white/10'}`}>
+                                                            <MapPin className={`w-8 h-8 ${move.is_authorized ? 'text-neon-green' : 'text-neon-blue'}`} />
+                                                        </div>
+                                                        <div className="text-center mt-3">
+                                                            <div className="text-[10px] text-gray-500 font-mono uppercase">Authorized Origin</div>
+                                                            <div className={`text-sm font-bold font-mono ${move.is_authorized ? 'text-neon-green' : 'text-white'}`}>{move.origin_ip}</div>
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="p-4 rounded-full bg-neon-red/10 border border-neon-red shadow-[0_0_15px_#ef4444]">
-                                                            <AlertTriangle className="w-8 h-8 text-neon-red animate-pulse" />
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <div className="text-[10px] text-neon-red font-mono uppercase font-bold">Unauthorized Probe</div>
-                                                            <div className="text-sm font-bold text-neon-red font-mono text-glow-red">{move.current_ip}</div>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
+                                                    {/* 2. Middle & Right: Threat Tree (Only if unauthorized) */}
+                                                    {!move.is_authorized && uniqueProbes.length > 0 && (
+                                                        <div className="flex-1 flex flex-col md:flex-row items-center relative">
+                                                            
+                                                            {/* Flowing animated trunk line (Waveform) */}
+                                                            <div className="flex-1 w-full md:min-w-[150px] h-[40px] relative hidden md:block">
+                                                                {/* Faint static center line */}
+                                                                <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-neon-red/20 -translate-y-1/2" />
+                                                                
+                                                                {/* Glowing waveform SVG */}
+                                                                <svg className="absolute inset-0 w-full h-full text-neon-red" preserveAspectRatio="none" viewBox="0 0 200 40">
+                                                                    {/* Background faint wave */}
+                                                                    <path d="M0,20 Q10,0 20,20 T40,20 T60,20 T80,20 T100,20 T120,20 T140,20 T160,20 T180,20 T200,20" 
+                                                                          fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.2" />
+                                                                          
+                                                                    {/* Animated glowing wave packet */}
+                                                                    <path d="M0,20 Q10,0 20,20 T40,20 T60,20 T80,20 T100,20 T120,20 T140,20 T160,20 T180,20 T200,20" 
+                                                                          fill="none" stroke="currentColor" strokeWidth="2" 
+                                                                          strokeDasharray="40 160"
+                                                                          className="animate-[wave-dash_1.5s_linear_infinite]"
+                                                                          style={{ filter: "drop-shadow(0 0 5px rgba(239,68,68,0.9))" }} />
+                                                                </svg>
+                                                                
+                                                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-mono text-neon-red font-bold uppercase whitespace-nowrap bg-[#1a0808]/80 px-2 rounded-full border border-neon-red/20 z-10">
+                                                                    <ArrowRight className="w-3 h-3 animate-pulse" /> Exfiltrating
+                                                                </div>
+                                                            </div>
 
-                                            {move.is_authorized && (
-                                                <div className="flex flex-col items-center gap-2 opacity-50">
-                                                    <div className="p-4 rounded-full bg-white/5 border border-white/10 border-dashed">
-                                                        <ShieldAlert className="w-8 h-8 text-gray-500" />
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <div className="text-[10px] text-gray-600 font-mono uppercase">No Movement Detected</div>
-                                                        <div className="text-sm font-bold text-gray-600 font-mono italic">Origin Secured</div>
-                                                    </div>
+                                                            {/* Right Side Branches */}
+                                                            <div className="flex flex-col justify-center gap-6 relative md:pl-8 py-4 w-full md:w-auto mt-6 md:mt-0">
+                                                                {/* Vertical tree spine */}
+                                                                {uniqueProbes.length > 1 && (
+                                                                    <div className="absolute left-0 top-[15%] bottom-[15%] w-[2px] bg-neon-red/40 hidden md:block shadow-[0_0_10px_#ef4444]" />
+                                                                )}
+
+                                                                {uniqueProbes.map(probeIp => (
+                                                                    <div key={probeIp} className="flex items-center relative w-full md:w-auto">
+                                                                        {/* Horizontal branch connector */}
+                                                                        {uniqueProbes.length > 1 && (
+                                                                            <div className="absolute left-0 w-8 h-[2px] bg-neon-red/40 hidden md:block" />
+                                                                        )}
+
+                                                                        <div className="flex flex-col items-center bg-black/40 p-4 rounded-xl border border-neon-red/20 shadow-lg min-w-[200px] w-full z-10 md:ml-8 transition-transform hover:scale-105">
+                                                                            <div className="p-3 rounded-full bg-neon-red/10 border border-neon-red mb-2 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                                                                                <AlertTriangle className="w-6 h-6 text-neon-red animate-pulse" />
+                                                                            </div>
+                                                                            <div className="text-center w-full">
+                                                                                <div className="text-[10px] text-neon-red font-mono uppercase font-bold">Unauthorized Probe</div>
+                                                                                <div className="text-sm font-bold text-neon-red font-mono text-glow-red truncate max-w-[180px] mx-auto" title={probeIp}>{probeIp}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* No Movement State */}
+                                                    {move.is_authorized && (
+                                                        <div className="flex-1 flex flex-col items-center justify-center opacity-50 mt-6 md:mt-0">
+                                                            <div className="p-4 rounded-full bg-white/5 border border-white/10 border-dashed">
+                                                                <ShieldAlert className="w-8 h-8 text-gray-500" />
+                                                            </div>
+                                                            <div className="text-center mt-3">
+                                                                <div className="text-[10px] text-gray-600 font-mono uppercase">No Movement Detected</div>
+                                                                <div className="text-sm font-bold text-gray-600 font-mono italic">Origin Secured</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             ))}
@@ -258,11 +313,58 @@ export default function TheLeakerDashboard({ onNavigate }) {
                                                         <div className={`text-${secondaryColor} font-bold font-mono text-base break-all`}>{threat.document_name}</div>
                                                     </div>
                                                     <div className="bg-black/40 border border-white/5 rounded-lg p-4">
-                                                        <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1.5 font-bold">Threat Source</div>
-                                                        <div className="text-white font-[Orbitron] font-black">{threat.ip_address}</div>
-                                                        <div className="text-[10px] text-gray-400 mt-1 truncate" title={threat.user_agent}>{threat.user_agent}</div>
+                                                        <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-1.5 font-bold">{isAuthorized ? 'Owner / Source' : 'Threat Source'}</div>
+                                                        <div className="text-white font-[Orbitron] font-black">{threat.source_info?.hostname || threat.ip_address}</div>
+                                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${isAuthorized ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-red/20 text-neon-red'} font-mono uppercase font-bold`}>
+                                                                {threat.source_info?.network || 'REMOTE'}
+                                                            </span>
+                                                            {threat.source_info?.device_type && (
+                                                                <span className={`text-[9px] px-1.5 py-0.5 rounded ${threat.source_info.device_type === 'MOBILE' ? 'bg-neon-amber/20 text-neon-amber' : 'bg-neon-blue/20 text-neon-blue'} font-mono uppercase font-bold`}>
+                                                                    {threat.source_info.device_type}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Detailed Forensic Intel Grid */}
+                                                {threat.source_info && (
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">IP Address</div>
+                                                            <div className="text-xs text-white font-mono font-bold truncate" title={threat.source_info.ip}>{threat.source_info.ip}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Operating System</div>
+                                                            <div className="text-xs text-neon-blue font-mono font-bold truncate" title={threat.source_info.os}>{threat.source_info.os || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Browser</div>
+                                                            <div className="text-xs text-neon-purple font-mono font-bold truncate" title={threat.source_info.browser}>{threat.source_info.browser || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">ISP / Network</div>
+                                                            <div className="text-xs text-gray-300 font-mono truncate" title={threat.source_info.isp}>{threat.source_info.isp || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Location</div>
+                                                            <div className="text-xs text-neon-amber font-mono font-bold truncate" title={threat.source_info.location}>{threat.source_info.location || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Organization</div>
+                                                            <div className="text-xs text-gray-300 font-mono truncate" title={threat.source_info.org}>{threat.source_info.org || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Timezone</div>
+                                                            <div className="text-xs text-gray-400 font-mono truncate" title={threat.source_info.timezone}>{threat.source_info.timezone || 'Unknown'}</div>
+                                                        </div>
+                                                        <div className="bg-black/30 border border-white/5 rounded-lg p-3 overflow-hidden">
+                                                            <div className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1 font-bold">Access Time</div>
+                                                            <div className="text-xs text-neon-green font-mono font-bold truncate" title={new Date(threat.source_info.access_time).toLocaleTimeString()}>{new Date(threat.source_info.access_time).toLocaleTimeString()}</div>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 <div className={`bg-[#0a0f12]/90 rounded-xl p-4 md:p-5 border border-${isAuthorized ? 'neon-green/20' : 'neon-blue/20'}`}>
                                                     <div className="flex items-center gap-2 mb-3">

@@ -5,7 +5,16 @@ import json
 import random
 import time
 import base64
+import warnings
+import socket
 from datetime import datetime
+from contextlib import asynccontextmanager
+
+# Suppress ALL deprecation warnings before importing third-party packages
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*urllib3.*chardet.*charset_normalizer.*")
+warnings.filterwarnings("ignore", message=".*TripleDES.*")
 
 # Ensure project root is in path for shield_engine
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,24 +40,14 @@ if GOOGLE_API_KEY:
 # We will initialize the model only if the key is available
 gemini_model = genai.GenerativeModel('gemini-1.5-flash') if GOOGLE_API_KEY else None
 
-app = FastAPI(title="Labyrinth Forge — DevSecOps Shield v2.0", version="2.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # ── Global state ─────────────────────────────────────
 sessions: dict[str, HoneypotSession] = {}
 monitors: List[WebSocket] = []
 file_tracking: Dict[str, Dict[str, Any]] = {}
 main_loop = None
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app):
     global main_loop
     main_loop = asyncio.get_running_loop()
     # Start SSH Honeypot in background
@@ -64,6 +63,18 @@ async def startup_event():
             print("[!] Broadcast failed: main_loop not initialized")
         
     start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+    yield  # Application runs
+    # Shutdown logic (if any) goes here
+
+app = FastAPI(title="Labyrinth Forge — DevSecOps Shield v2.0", version="2.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_client_ip(request: Request):
     """Robust client IP detection for proxies like Ngrok."""
@@ -86,6 +97,145 @@ def get_client_ip(request: Request):
             return real_ip
             
     return host
+
+def get_lan_ip():
+    """Retrieve the actual LAN IP address of this machine instead of 127.0.0.1 for realism."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # Does not have to be reachable, just forces the OS to pick an outbound interface
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def _parse_user_agent(ua: str) -> dict:
+    """Parse a User-Agent string into OS, browser, and device type."""
+    ua_lower = ua.lower()
+    
+    # Detect OS
+    if "windows nt 10" in ua_lower:
+        os_name = "Windows 10/11"
+    elif "windows nt" in ua_lower:
+        os_name = "Windows"
+    elif "macintosh" in ua_lower or "mac os" in ua_lower:
+        os_name = "macOS"
+    elif "android" in ua_lower:
+        os_name = "Android"
+    elif "iphone" in ua_lower:
+        os_name = "iOS (iPhone)"
+    elif "ipad" in ua_lower:
+        os_name = "iOS (iPad)"
+    elif "linux" in ua_lower:
+        os_name = "Linux"
+    elif "cros" in ua_lower:
+        os_name = "ChromeOS"
+    else:
+        os_name = "Unknown OS"
+    
+    # Detect Browser
+    if "edg/" in ua_lower:
+        browser = "Microsoft Edge"
+    elif "opr/" in ua_lower or "opera" in ua_lower:
+        browser = "Opera"
+    elif "chrome" in ua_lower and "safari" in ua_lower:
+        browser = "Google Chrome"
+    elif "firefox" in ua_lower:
+        browser = "Mozilla Firefox"
+    elif "safari" in ua_lower:
+        browser = "Apple Safari"
+    else:
+        browser = "Unknown Browser"
+    
+    # Detect Device Type
+    if any(x in ua_lower for x in ["mobile", "android", "iphone"]):
+        device_type = "MOBILE"
+    elif any(x in ua_lower for x in ["tablet", "ipad"]):
+        device_type = "TABLET"
+    else:
+        device_type = "DESKTOP"
+    
+    return {"os": os_name, "browser": browser, "device_type": device_type}
+
+def _get_ip_geolocation(ip: str) -> dict:
+    """Lookup IP geolocation using a free API. Returns location data."""
+    is_local = ip in ("127.0.0.1", "::1", "localhost")
+    if is_local:
+        return {
+            "city": "Localhost",
+            "region": "Local Network",
+            "country": "Local",
+            "isp": "Loopback Adapter",
+            "org": "Your Machine",
+            "lat": 0, "lon": 0,
+            "timezone": "Local"
+        }
+    try:
+        import requests as req
+        resp = req.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,lat,lon,timezone,isp,org", timeout=3)
+        data = resp.json()
+        if data.get("status") == "success":
+            return {
+                "city": data.get("city", "Unknown"),
+                "region": data.get("regionName", "Unknown"),
+                "country": data.get("country", "Unknown"),
+                "isp": data.get("isp", "Unknown ISP"),
+                "org": data.get("org", "Unknown Org"),
+                "lat": data.get("lat", 0),
+                "lon": data.get("lon", 0),
+                "timezone": data.get("timezone", "Unknown")
+            }
+    except Exception as e:
+        print(f"[!] IP Geolocation lookup failed: {e}")
+    return {
+        "city": "Unknown", "region": "Unknown", "country": "Unknown",
+        "isp": "Unknown", "org": "Unknown", "lat": 0, "lon": 0, "timezone": "Unknown"
+    }
+
+def get_source_intel(request: Request):
+    """Generate detailed real-time source fingerprinting for threat analysis."""
+    ip = get_client_ip(request)
+    ua = request.headers.get("user-agent", "Unknown")
+    
+    is_local = ip in ("127.0.0.1", "::1")
+    parsed_ua = _parse_user_agent(ua)
+    geo = _get_ip_geolocation(ip)
+    
+    network_type = "INTERNAL_VLAN" if is_local else "EXTERNAL_REMOTE"
+    hostname = "ADMIN-WORKSPACE" if is_local else f"NODE-{ip.replace('.', '-')}"
+    
+    return {
+        "ip": ip,
+        "ua": ua,
+        "hostname": hostname,
+        "network": network_type,
+        "location": f"{geo['city']}, {geo['region']}, {geo['country']}" if not is_local else "Local Datacenter",
+        "os": parsed_ua["os"],
+        "browser": parsed_ua["browser"],
+        "device_type": parsed_ua["device_type"],
+        "isp": geo["isp"],
+        "org": geo["org"],
+        "lat": geo["lat"],
+        "lon": geo["lon"],
+        "timezone": geo["timezone"],
+        "access_time": datetime.now().isoformat()
+    }
+
+def is_authorized_access(request: Request, file_id: str = None) -> bool:
+    """Check if the request is coming from an authorized environment."""
+    ip = get_client_ip(request)
+    ua = request.headers.get("user-agent", "Unknown Device")
+    
+    # Always authorize localhost for testing
+    if ip == "127.0.0.1" or ip == "::1":
+        return True
+        
+    if file_id and file_id in file_tracking:
+        tracking = file_tracking[file_id]
+        return ip == tracking.get("first_ip") and ua == tracking.get("first_ua")
+        
+    return False
 
 async def broadcast_to_monitors(message: dict):
     """Send a message to all connected monitor UIs."""
@@ -235,22 +385,22 @@ async def honeytoken_tripwire(document_name: str, request: Request):
     """
     Invisible tripwire route that detects when an internal user accesses a restricted decoy file.
     """
-    ip_address = request.client.host if request.client else "Unknown"
-    user_agent = request.headers.get("user-agent", "Unknown Device")
+    is_authorized = is_authorized_access(request, document_name)
     timestamp = datetime.now().isoformat()
+    source = get_source_intel(request)
     
-    gemini_analysis = "Simulation mode analysis: Highly suspicious internal threat detected."
+    gemini_analysis = "Authorized access from secure endpoint. No threat detected." if is_authorized else "Simulation mode analysis: Highly suspicious internal threat detected."
     
-    if gemini_model:
+    if gemini_model and not is_authorized:
         try:
             prompt = (
-                f"An internal user from IP {ip_address} using device {user_agent} "
+                f"An internal user from IP {source['ip']} using device {source['ua']} "
                 f"just accessed a highly restricted decoy file named {document_name} at {timestamp}. "
                 "Analyze this security breach, explain why accessing a decoy file indicates "
                 "malicious internal intent, and provide a threat severity score from 1-100. "
                 "Keep the response under 3 sentences."
             )
-            response = gemini_model.generate_content(prompt)
+            response = await asyncio.to_thread(gemini_model.generate_content, prompt)
             if response and response.text:
                 gemini_analysis = response.text.strip()
         except Exception as e:
@@ -259,14 +409,16 @@ async def honeytoken_tripwire(document_name: str, request: Request):
     alert_data = {
         "type": "INTERNAL_THREAT_ALERT",
         "document_name": document_name,
-        "ip_address": ip_address,
-        "user_agent": user_agent,
+        "ip_address": source["ip"],
+        "user_agent": source["ua"],
+        "source_info": source,
         "timestamp": timestamp,
-        "gemini_analysis": gemini_analysis
+        "gemini_analysis": gemini_analysis,
+        "is_authorized": is_authorized
     }
     
     await broadcast_to_monitors(alert_data)
-    return {"status": "tracked", "analysis": gemini_analysis}
+    return {"status": "tracked" if not is_authorized else "authorized", "analysis": gemini_analysis}
 
 @app.get("/api/download/{filename}")
 async def download_decoy(filename: str, request: Request):
@@ -278,21 +430,22 @@ async def download_decoy(filename: str, request: Request):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
-    ip_address = request.client.host if request.client else "Unknown"
-    user_agent = request.headers.get("user-agent", "Unknown Device")
+    file_id = filename.split('.')[0]
+    is_authorized = is_authorized_access(request, file_id)
     timestamp = datetime.now().isoformat()
+    source = get_source_intel(request)
     
-    gemini_analysis = "Simulation mode analysis: High-priority data exfiltration detected via direct download."
+    gemini_analysis = "File download by authorized owner. Secure transfer." if is_authorized else "Simulation mode analysis: High-priority data exfiltration detected via direct download."
     
-    if gemini_model:
+    if gemini_model and not is_authorized:
         try:
             prompt = (
-                f"CRITICAL: An internal user from IP {ip_address} is DOWNLOADING a decoy file: {filename}. "
+                f"CRITICAL: An internal user from IP {source['ip']} is DOWNLOADING a decoy file: {filename}. "
                 f"This is a deliberate exfiltration attempt detected at {timestamp}. "
                 "Analyze the risk of this physical theft/download, identify the intent as malicious data hoarding, "
                 "and explain why this is a high-severity breach. Keep it under 3 sentences."
             )
-            response = gemini_model.generate_content(prompt)
+            response = await asyncio.to_thread(gemini_model.generate_content, prompt)
             if response and response.text:
                 gemini_analysis = response.text.strip()
         except Exception as e:
@@ -301,10 +454,12 @@ async def download_decoy(filename: str, request: Request):
     alert_data = {
         "type": "INTERNAL_THREAT_ALERT",
         "document_name": filename,
-        "ip_address": ip_address,
-        "user_agent": f"[DOWNLOAD] {user_agent}",
+        "ip_address": source["ip"],
+        "user_agent": f"[DOWNLOAD] {source['ua']}",
+        "source_info": source,
         "timestamp": timestamp,
-        "gemini_analysis": gemini_analysis
+        "gemini_analysis": gemini_analysis,
+        "is_authorized": is_authorized
     }
     
     await broadcast_to_monitors(alert_data)
@@ -320,88 +475,104 @@ async def api_generate_decoy(request: Request):
     """
     API endpoint to generate and return a trackable document.
     """
-    data = await request.json()
-    filename = data.get("filename", "decoy.html")
-    base_url = data.get("base_url", f"http://{request.client.host}:8000") # Fallback to request host
-    
-    file_id = filename.split('.')[0]
-    temp_path = os.path.join("decoys", filename)
-    
-    # Ensure decoys dir exists
-    os.makedirs("decoys", exist_ok=True)
-    
-    if filename.endswith('.pdf'):
-        generate_trackable_pdf(file_id, temp_path, base_url)
-    else:
-        # Default to HTML for best compatibility
-        generate_trackable_html(file_id, temp_path, base_url)
-
-    # Pre-authorize you (the creator) as the official origin
-    client_ip = get_client_ip(request)
-    client_ua = request.headers.get("user-agent", "Unknown Device")
-    file_tracking[file_id] = {
-        "first_ip": client_ip,
-        "first_ua": client_ua,
-        "access_history": []
-    }
-    print(f"[*] Pre-authorized {client_ip} for {file_id}")
+    try:
+        data = await request.json()
+        filename = data.get("filename", "decoy.html")
+        base_url = data.get("base_url", f"http://{request.client.host}:8000") # Fallback to request host
         
-    return {"message": "Decoy generated", "download_url": f"/api/download/{filename}"}
+        file_id = filename.split('.')[0]
+        temp_path = os.path.join("decoys", filename)
+        
+        # Ensure decoys dir exists
+        os.makedirs("decoys", exist_ok=True)
+        
+        if filename.endswith('.pdf'):
+            generate_trackable_pdf(file_id, temp_path, base_url)
+        else:
+            # Default to HTML for best compatibility
+            generate_trackable_html(file_id, temp_path, base_url)
+
+        # Pre-authorize you (the creator) as the official origin
+        client_ip = get_client_ip(request)
+        if client_ip in ("127.0.0.1", "::1", "localhost"):
+            client_ip = get_lan_ip() # Use realistic LAN IP instead of loopback
+            
+        client_ua = request.headers.get("user-agent", "Unknown Device")
+        file_tracking[file_id] = {
+            "first_ip": client_ip,
+            "first_ua": client_ua,
+            "access_history": []
+        }
+        print(f"[*] Pre-authorized {client_ip} for {file_id}")
+            
+        return {"message": "Decoy generated", "download_url": f"/api/download/{filename}"}
+    except Exception as e:
+        print(f"[!] Generate Decoy Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}, 500
 
 @app.get("/api/v1/ghost-pixel/{file_id}")
 async def ghost_pixel(file_id: str, request: Request):
     """
     Invisible 1x1 tracking pixel that detects unauthorized file exfiltration (USB, Cloud, etc.)
     """
-    ip_address = get_client_ip(request)
-    user_agent = request.headers.get("user-agent", "Unknown Device")
+    source = get_source_intel(request)
     timestamp = datetime.now().isoformat()
 
-    print(f"[*] TRACKING HIT: {ip_address} | Device: {user_agent}")
+    print(f"[*] TRACKING HIT: {source['ip']} | Device: {source['ua']}")
     
     # 1x1 transparent PNG pixel (base64)
     pixel_data = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")
     
     # --- Smart Authorization Logic ---
-    if file_id not in file_tracking or not file_tracking[file_id].get("access_history"):
-        # First time anyone is opening this file!
-        # This person is automatically the "Authorized Owner"
-        print(f"[!] New File Access: Promoting {ip_address} as Authorized Origin for {file_id}")
+    if file_id not in file_tracking:
+        # If the file wasn't generated via the API (e.g. pre-deployed)
+        # the first person to trigger it becomes the "Authorized Owner"
+        print(f"[!] Unknown File Access: Promoting {source['ip']} as Authorized Origin for {file_id}")
         file_tracking[file_id] = {
-            "first_ip": ip_address,
-            "first_ua": user_agent,
+            "first_ip": source['ip'],
+            "first_ua": source['ua'],
             "access_history": []
         }
+        
+    # Deduplication: Prevent double alerts if HTML fires multiple pixels at once
+    history = file_tracking.get(file_id, {}).get("access_history", [])
+    if history:
+        last_access = history[-1]
+        if last_access["ip"] == source["ip"]:
+            last_time = datetime.fromisoformat(last_access["timestamp"])
+            if (datetime.now() - last_time).total_seconds() < 5:
+                print(f"[*] Duplicate ping from {source['ip']} ignored.")
+                return Response(content=pixel_data, media_type="image/png")
     
     # Eval against the owner
-    is_ip_change = ip_address != file_tracking[file_id]["first_ip"]
-    is_ua_change = user_agent != file_tracking[file_id]["first_ua"]
-    is_movement = is_ip_change or is_ua_change
+    is_authorized = is_authorized_access(request, file_id)
+    is_movement = not is_authorized
     # --------------------------------
     
     history_entry = {
-        "ip": ip_address,
+        "ip": source['ip'],
         "timestamp": timestamp,
-        "user_agent": user_agent,
+        "user_agent": source['ua'],
         "status": "UNAUTHORIZED" if is_movement else "AUTHORIZED"
     }
     file_tracking[file_id]["access_history"].append(history_entry)
     
     if is_movement:
-        threat_type = "GEOGRAPHIC ANOMALY" if is_ip_change else "DEVICE ANOMALY (SHARING DETECTED)"
-        gemini_analysis = f"[Simulation] Potential data leak detected. File accessed from {'new network' if is_ip_change else 'unauthorized device on same network'}."
+        threat_type = "GEOGRAPHIC ANOMALY" # Simply put, any change from first access
+        gemini_analysis = f"[Simulation] Potential data leak detected. File accessed from unauthorized environment."
         
         if gemini_model:
             try:
                 prompt = (
                     f"SECURITY ALERT: The honeytoken file '{file_id}' was accessed. "
                     f"Authorized Environment: IP {file_tracking[file_id]['first_ip']}, Device {file_tracking[file_id]['first_ua']}. "
-                    f"Current Access: IP {ip_address}, Device {user_agent}. "
-                    f"Move Type: {'IP Change' if is_ip_change else 'Device Change on Same Wi-Fi'}. "
+                    f"Current Access: IP {source['ip']}, Device {source['ua']}. "
                     "Analyze the threat. Is this a USB share, a colleague's laptop, or external exfiltration? "
                     "Provide a sharp threat assessment in under 3 sentences."
                 )
-                response = gemini_model.generate_content(prompt)
+                response = await asyncio.to_thread(gemini_model.generate_content, prompt)
                 if response and response.text:
                     gemini_analysis = response.text.strip()
             except Exception as e:
@@ -413,7 +584,7 @@ async def ghost_pixel(file_id: str, request: Request):
             "type": "FILE_MOVEMENT_DETECTED",
             "file_id": file_id,
             "origin_ip": file_tracking[file_id]["first_ip"],
-            "current_ip": ip_address,
+            "current_ip": source['ip'],
             "history": file_tracking[file_id]["access_history"],
             "gemini_analysis": gemini_analysis,
             "timestamp": timestamp,
@@ -424,22 +595,23 @@ async def ghost_pixel(file_id: str, request: Request):
         await broadcast_to_monitors({
             "type": "INTERNAL_THREAT_ALERT",
             "document_name": file_id,
-            "ip_address": ip_address,
-            "user_agent": f"[{threat_type}] {user_agent}",
+            "ip_address": source['ip'],
+            "user_agent": f"[UNAUTHORIZED ACCESS] {source['ua']}",
+            "source_info": source,
             "gemini_analysis": gemini_analysis,
             "timestamp": timestamp,
             "is_authorized": False
         })
     else:
         # Authorized Hit
-        print(f"[*] Authorized heartbeat from {ip_address}")
+        print(f"[*] Authorized heartbeat from {source['ip']}")
         
         # WE SEND A MOVEMENT EVENT EVEN FOR THE FIRST HIT to initialize the map
         await broadcast_to_monitors({
             "type": "FILE_MOVEMENT_DETECTED",
             "file_id": file_id,
-            "origin_ip": ip_address,
-            "current_ip": ip_address,
+            "origin_ip": source['ip'],
+            "current_ip": source['ip'],
             "history": file_tracking[file_id]["access_history"],
             "gemini_analysis": "Authorized Origin established.",
             "timestamp": timestamp,
@@ -449,8 +621,9 @@ async def ghost_pixel(file_id: str, request: Request):
         await broadcast_to_monitors({
             "type": "INTERNAL_THREAT_ALERT",
             "document_name": file_id,
-            "ip_address": ip_address,
-            "user_agent": f"[AUTHORIZED ACCESS] {user_agent}",
+            "ip_address": source['ip'],
+            "user_agent": f"[AUTHORIZED OWNER] {source['ua']}",
+            "source_info": source,
             "gemini_analysis": "File accessed from original authorized environment. No threat detected.",
             "timestamp": timestamp,
             "is_authorized": True
@@ -480,7 +653,7 @@ async def attacker_ws(websocket: WebSocket):
         "session_id": sid,
         "attacker_ip": ip,
         "prompt": session.prompt,
-        "message": f"🔥 LIVE INTRUSION — Attacker connected from {ip} (Local CLI)"
+        "message": f"ALERT: LIVE INTRUSION — Attacker connected from {ip} (Local CLI)"
     }
     try:
         await broadcast_to_monitors(init_payload)
@@ -495,8 +668,9 @@ async def attacker_ws(websocket: WebSocket):
             msg = json.loads(data)
             if msg.get("type") == "command":
                 cmd = msg["command"]
-                output = session.process_command(cmd)
-                profile = session.get_profile()
+                # Run blocking honeypot logic in a thread to keep the event loop (and keepalives) alive
+                output = await asyncio.to_thread(session.process_command, cmd)
+                profile = await asyncio.to_thread(session.get_profile)
                 
                 # 1. Send response back to Attacker CLI
                 await websocket.send_json({
@@ -512,8 +686,8 @@ async def attacker_ws(websocket: WebSocket):
                     "output": output,
                     "prompt": session.prompt,
                     "profile": profile,
-                    "attack_intel": session.get_attack_intel(),
-                    "prediction": session.predict_next_move(),
+                    "attack_intel": await asyncio.to_thread(session.get_attack_intel),
+                    "prediction": await asyncio.to_thread(session.predict_next_move),
                     "risk_event": session.calculate_command_risk(cmd) > 15
                 })
     except (WebSocketDisconnect, RuntimeError, ConnectionResetError):
@@ -595,15 +769,15 @@ async def demo_ws(websocket: WebSocket):
                 # Simulate typing delay
                 await asyncio.sleep(delay)
 
-                output = session.process_command(cmd)
+                output = await asyncio.to_thread(session.process_command, cmd)
                 await websocket.send_json({
                     "type": "command",
                     "command": cmd,
                     "output": output,
                     "prompt": session.prompt,
-                    "profile": session.get_profile(),
-                    "attack_intel": session.get_attack_intel(),
-                    "prediction": session.predict_next_move(),
+                    "profile": await asyncio.to_thread(session.get_profile),
+                    "attack_intel": await asyncio.to_thread(session.get_attack_intel),
+                    "prediction": await asyncio.to_thread(session.predict_next_move),
                 })
 
                 # Dave from IT appears after 8 commands
@@ -645,4 +819,5 @@ async def demo_ws(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Use reload=True for development so changes in honeypot.py etc. take effect immediately
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

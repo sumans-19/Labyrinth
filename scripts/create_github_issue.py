@@ -20,6 +20,12 @@ import argparse
 import os
 import sys
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 
 # ── Configuration ──────────────────────────────────────────────────────────
 OWNER = "sumans-19"
