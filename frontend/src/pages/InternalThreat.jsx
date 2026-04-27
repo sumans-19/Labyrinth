@@ -1,41 +1,55 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
     Users, ShieldAlert, FileWarning, Eye, Activity,
     Search, Filter, Lock, Unlock, Download,
-    AlertCircle, Terminal, BarChart3, Database
+    AlertCircle, Terminal, BarChart3, Database,
+    Network, UserX, Bomb, Crosshair, Target
 } from 'lucide-react';
-import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, BarChart, Bar, Cell
-} from 'recharts';
-import CyberCorner from '../components/CyberCorner';
 
-const MOCK_ALERTS = [
-    { id: 'ALT-8821', user: 'j.smith@acme.com', action: 'Bulk File Download', risk: 'HIGH', time: '10:24:15', dept: 'Engineering' },
-    { id: 'ALT-8822', user: 's.chen@acme.com', action: 'Off-hours SSH Access', risk: 'MEDIUM', time: '11:05:02', dept: 'IT Admin' },
-    { id: 'ALT-8823', user: 'unknown_service', action: 'API Key Leakage', risk: 'CRITICAL', time: '12:15:44', dept: 'DevOps' },
-    { id: 'ALT-8824', user: 'm.wilson@acme.com', action: 'External Data Upload', risk: 'HIGH', time: '13:42:11', dept: 'Finance' },
-    { id: 'ALT-8825', user: 'a.sharma@acme.com', action: 'Privilege Escalation', risk: 'CRITICAL', time: '14:20:00', dept: 'Marketing' },
-];
-
-const MOCK_DATA_FLOW = [
-    { name: 'Mon', internal: 4000, external: 2400 },
-    { name: 'Tue', internal: 3000, external: 1398 },
-    { name: 'Wed', internal: 2000, external: 9800 },
-    { name: 'Thu', internal: 2780, external: 3908 },
-    { name: 'Fri', internal: 1890, external: 4800 },
-    { name: 'Sat', internal: 2390, external: 3800 },
-    { name: 'Sun', internal: 3490, external: 4300 },
-];
-
-export default function InternalThreat() {
+export default function InternalThreat({ onNavigate }) {
     const [searchTerm, setSearchTerm] = useState('');
 
-    const stats = [
-        { label: 'Active Sessions', value: '142', icon: Activity, color: '#3b82f6' },
-        { label: 'High Risk Users', value: '04', icon: ShieldAlert, color: '#ef4444' },
-        { label: 'Data Points', value: '2.4M', icon: Database, color: '#10b981' },
-        { label: 'Anomalies', value: '12', icon: FileWarning, color: '#f59e0b' },
+    const THREAT_PROFILES = [
+        {
+            title: 'The Leaker',
+            icon: Download,
+            color: 'text-neon-red',
+            border: 'border-neon-red/30',
+            bg: 'bg-neon-red/5',
+            glow: 'group-hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]',
+            method: 'Copies sensitive documents (PDFs, Excel) to a USB or personal Cloud.',
+            solution: 'Honey-Tokens: Files with tracking pixels. Opening the file pings your FastAPI backend instantly.'
+        },
+        {
+            title: 'The Lateral Mover',
+            icon: Network,
+            color: 'text-neon-amber',
+            border: 'border-neon-amber/30',
+            bg: 'bg-neon-amber/5',
+            glow: 'group-hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]',
+            method: 'Tries to access servers or databases outside their job role.',
+            solution: 'Shadow Credentials: Plant fake .env files or config.json on employee machines. Using these "keys" triggers an immediate alarm.'
+        },
+        {
+            title: 'The Impersonator',
+            icon: UserX,
+            color: 'text-neon-blue',
+            border: 'border-neon-blue/30',
+            bg: 'bg-neon-blue/5',
+            glow: 'group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]',
+            method: "Uses a co-worker's unattended laptop to access the internal network.",
+            solution: 'Biometric Analysis: AI detects if the typing rhythm or command frequency deviates from the "owner\'s" profile.'
+        },
+        {
+            title: 'The Saboteur',
+            icon: Bomb,
+            color: 'text-neon-purple',
+            border: 'border-neon-purple/30',
+            bg: 'bg-neon-purple/5',
+            glow: 'group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]',
+            method: 'Injects a "Logic Bomb" or backdoor into the company\'s codebase.',
+            solution: 'Aegis Integration: Git-hook intercepts the commit, and Gemini identifies the malicious logic before merge.'
+        }
     ];
 
     return (
@@ -73,125 +87,51 @@ export default function InternalThreat() {
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((s, i) => (
-                    <div key={i} className="glass-card p-6 border-white/5 bg-black/20 hover:border-white/10 transition-colors relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 transition-opacity group-hover:opacity-10">
-                            <s.icon size={60} color={s.color} />
+            {/* Threat Profiles Animated Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 max-w-5xl mx-auto mt-12">
+                {THREAT_PROFILES.map((tp, i) => (
+                    <div
+                        key={i}
+                        onClick={() => {
+                            if (i === 0 && onNavigate) onNavigate('leaker');
+                            if (i === 1 && onNavigate) onNavigate('lateral-mover');
+                        }}
+                        className={`glass-card p-8 border min-h-[280px] ${tp.border} ${tp.bg} hover:bg-black/80 transition-all duration-500 group relative overflow-hidden ${tp.glow} ${[0, 1].includes(i) ? 'cursor-pointer hover:scale-[1.02] hover:border-white/50' : 'cursor-default'}`}
+                    >
+                        {/* Hover accent background overlay */}
+                        <div className={`absolute inset-0 bg-gradient-to-b from-transparent to-black/95 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
+                        <div className="relative z-10 flex flex-col h-full">
+                            {/* Card Header */}
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className={`p-3 rounded-xl bg-black/50 border ${tp.border}`}>
+                                    <tp.icon className={`w-8 h-8 ${tp.color}`} />
+                                </div>
+                                <h3 className={`font-[Orbitron] font-black text-xl tracking-wider uppercase ${tp.color}`}>
+                                    {tp.title}
+                                </h3>
+                            </div>
+
+                            {/* Default View: Attack Method */}
+                            <div className="flex-1 transform transition-all duration-500 group-hover:-translate-y-12 group-hover:opacity-0 relative z-10 mt-2">
+                                <div className="text-xs font-mono text-white/40 mb-2 uppercase tracking-widest">Threat Vector</div>
+                                <p className="text-sm text-gray-300 leading-relaxed font-sans">
+                                    {tp.method}
+                                </p>
+                            </div>
+
+                            {/* Hover View: Labyrinth Countermeasure */}
+                            <div className="absolute inset-x-0 bottom-0 top-24 transform transition-all duration-500 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 flex flex-col justify-center pointer-events-none">
+                                <div className="text-sm font-[Orbitron] text-neon-green mb-3 uppercase tracking-widest font-bold flex items-center gap-2">
+                                    <Crosshair className="w-5 h-5" /> Labyrinth Forge Solution
+                                </div>
+                                <p className="text-base text-white leading-relaxed font-mono border-l-2 border-neon-green/50 pl-4 bg-black/20 py-2">
+                                    {tp.solution}
+                                </p>
+                            </div>
                         </div>
-                        <s.icon size={20} color={s.color} className="mb-4" />
-                        <div className="font-[Orbitron] text-2xl font-black text-white mb-1">{s.value}</div>
-                        <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest font-bold">{s.label}</div>
                     </div>
                 ))}
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-12 gap-6">
-
-                {/* Left: Behavioral Graph */}
-                <div className="col-span-12 lg:col-span-8 flex flex-col space-y-6">
-                    <div className="glass-card flex-1 p-6 relative h-[450px] border-neon-purple/20 bg-black/40">
-                        <CyberCorner position="top-right" className="text-neon-purple" />
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-neon-purple" />
-                                <span className="font-[Orbitron] text-xs font-bold text-neon-purple tracking-widest uppercase">
-                                    Network Traffic & Exfiltration Flow
-                                </span>
-                            </div>
-                            <div className="flex gap-4 text-[9px] font-mono text-gray-500 uppercase">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-neon-purple" /> INTERNAL
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-neon-cyan" /> EXTERNAL
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="h-[350px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={MOCK_DATA_FLOW}>
-                                    <defs>
-                                        <linearGradient id="colorInt" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#A855F7" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#A855F7" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorExt" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#ffffff20" fontSize={10} axisLine={false} tickLine={false} />
-                                    <YAxis stroke="#ffffff20" fontSize={10} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#0a0e1a', border: '1px solid #ffffff10', fontSize: '12px' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <Area type="monotone" dataKey="internal" stroke="#A855F7" fillOpacity={1} fill="url(#colorInt)" />
-                                    <Area type="monotone" dataKey="external" stroke="#06B6D4" fillOpacity={1} fill="url(#colorExt)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="glass-card p-6 border-white/5 bg-black/20">
-                        <div className="flex items-center gap-2 mb-6 text-neon-blue">
-                            <Terminal className="w-4 h-4" />
-                            <span className="font-[Orbitron] text-[10px] font-bold tracking-widest uppercase">Anomaly Analysis Stream</span>
-                        </div>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="flex gap-4 text-xs font-mono p-3 rounded bg-white/[0.02] border-l-2 border-neon-purple/40">
-                                    <span className="text-gray-600">[{new Date().toLocaleTimeString()}]</span>
-                                    <span className="text-neon-purple font-bold">INFO_CORE:</span>
-                                    <span className="text-gray-400">Heuristic scan complete on Node_{i * 1024}. No unauthorized decryption keys found.</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right: Alert Feed */}
-                <div className="col-span-12 lg:col-span-4 flex flex-col space-y-6">
-                    <div className="glass-card p-6 relative border-white/5 bg-[#0d111b]/80 h-full overflow-hidden flex flex-col shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-2">
-                                <ShieldAlert className="w-4 h-4 text-neon-red" />
-                                <span className="font-[Orbitron] text-xs font-bold text-white tracking-widest uppercase">High Risk Alerts</span>
-                            </div>
-                            <span className="text-[10px] font-mono text-gray-500 px-2 py-0.5 rounded bg-white/5">LIVE</span>
-                        </div>
-
-                        <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
-                            {MOCK_ALERTS.map((alert, i) => (
-                                <div key={i} className="p-4 rounded-lg bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${alert.risk === 'CRITICAL' ? 'bg-neon-pink' : alert.risk === 'HIGH' ? 'bg-neon-amber' : 'bg-neon-blue'
-                                        }`} />
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="text-[10px] font-bold text-gray-200 uppercase tracking-tight">{alert.user}</div>
-                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${alert.risk === 'CRITICAL' ? 'text-neon-pink' : alert.risk === 'HIGH' ? 'text-neon-amber' : 'text-neon-blue'
-                                            }`}>
-                                            {alert.risk}
-                                        </span>
-                                    </div>
-                                    <div className="text-[11px] text-gray-500 flex justify-between">
-                                        <span>{alert.action}</span>
-                                        <span className="font-mono">{alert.time}</span>
-                                    </div>
-                                    <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                        <button className="text-[8px] font-black text-neon-purple border border-neon-purple/30 px-2 py-1 rounded hover:bg-neon-purple/10 uppercase tracking-widest">Investigate</button>
-                                        <button className="text-[8px] font-black text-gray-400 border border-white/10 px-2 py-1 rounded hover:bg-white/5 uppercase tracking-widest">Dismiss</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     );

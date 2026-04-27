@@ -65,7 +65,7 @@ export default function ThreatIntelligenceGraph({ profile, commands }) {
             </div>
 
             {/* Graph Content */}
-            <div className="flex-1 p-2 pt-4">
+            <div className="flex-1 p-2 pt-4" style={{ minHeight: '200px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <defs>
@@ -123,12 +123,7 @@ export default function ThreatIntelligenceGraph({ profile, commands }) {
                 <div className="w-full h-[2px] bg-neon-blue/50 absolute animate-[scan_4s_linear_infinite]" />
             </div>
 
-            <style jsx>{`
-                @keyframes scan {
-                    from { transform: translateY(-100%); }
-                    to { transform: translateY(500%); }
-                }
-            `}</style>
+
         </div>
     );
 }

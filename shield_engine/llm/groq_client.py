@@ -93,3 +93,33 @@ Do not hallucinate partial fixes. Code must be syntactically valid and productio
         except Exception as e:
             logging.error(f"Groq Client Error: {e}")
             return "ERROR: AI Remediation Layer Unreachable."
+
+    def generate(self, prompt, json_format=False):
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7
+        }
+        if json_format:
+            payload["response_format"] = {"type": "json_object"}
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.post(self.endpoint, json=payload, headers=headers, timeout=30)
+            if response.status_code == 200:
+                content = response.json()['choices'][0]['message']['content']
+                if json_format:
+                    return json.loads(content)
+                return content
+            else:
+                logging.error(f"Groq API Error: {response.status_code} - {response.text}")
+                return None
+        except Exception as e:
+            logging.error(f"Groq Client Error: {e}")
+            return None

@@ -5,7 +5,7 @@ function GaugeMini({ value, max, color, label }) {
     const data = [{ value, fill: color }];
     return (
         <div className="flex flex-col items-center">
-            <div className="w-20 h-20 relative">
+            <div className="w-20 h-20 relative" style={{ minWidth: 80, minHeight: 80 }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <RadialBarChart
                         innerRadius="70%"
@@ -42,9 +42,17 @@ export default function HackerProfile({ profile }) {
 
     return (
         <div className="glass-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/5 bg-black/30 flex items-center gap-2">
-                <UserX className="w-4 h-4 text-neon-red" />
-                <span className="font-[Orbitron] text-xs font-semibold text-neon-red tracking-wider">HACKER PROFILE</span>
+            <div className="px-4 py-3 border-b border-white/5 bg-black/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-neon-red" />
+                    <span className="font-[Orbitron] text-xs font-semibold text-neon-red tracking-wider">HACKER PROFILE</span>
+                </div>
+                {profile.classification && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-neon-red/30 bg-neon-red/10">
+                        <ShieldAlert className="w-3 h-3 text-neon-red" />
+                        <span className="text-[9px] font-bold text-neon-red uppercase tracking-widest">{profile.classification}</span>
+                    </div>
+                )}
             </div>
 
             <div className="p-4">

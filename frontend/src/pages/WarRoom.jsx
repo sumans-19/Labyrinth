@@ -37,8 +37,12 @@ export default function WarRoom() {
     /* ── Start Live Monitor ── */
     /* ── Start Live Monitor ── */
     const startLiveMonitor = useCallback(() => {
-        // Prevent multiple connections
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+        // Close existing connection if any
+        if (wsRef.current) {
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+            wsRef.current = null;
+        }
 
         setLiveActive(true);
         setDemoActive(false); // Ensure demo is off
@@ -49,7 +53,7 @@ export default function WarRoom() {
         setActiveNodes(['entry']);
 
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = window.location.host; // Use Vite proxy
+        const host = window.location.hostname + ':8000'; // Bypass Vite proxy
         const ws = new WebSocket(`${protocol}://${host}/ws/monitor`);
         wsRef.current = ws;
 
@@ -64,15 +68,17 @@ export default function WarRoom() {
 
             if (msg.type === 'init') {
                 setAttackerIp(msg.attacker_ip);
-                termRef.current?.writeln(`\n\x1b[1;36m${'═'.repeat(50)}\x1b[0m`);
+                termRef.current?.writeln(`\n\x1b[1;36m${'-'.repeat(60)}\x1b[0m`);
                 termRef.current?.writeln(`\x1b[1;36m  ${msg.message}\x1b[0m`);
-                termRef.current?.writeln(`\x1b[1;36m${'═'.repeat(50)}\x1b[0m\n`);
+                termRef.current?.writeln(`\x1b[1;36m${'-'.repeat(60)}\x1b[0m\n`);
                 setDeceptionPhase('🟢 Live data stream established');
             }
 
             if (msg.type === 'command') {
                 termRef.current?.writeln(`\x1b[1;32m${msg.prompt}\x1b[0m${msg.command}`);
-                if (msg.output) termRef.current?.writeln(msg.output.replace(/\n/g, '\r\n'));
+                if (msg.output) {
+                    msg.output.split('\n').forEach(line => termRef.current?.writeln(line));
+                }
                 termRef.current?.writeln('');
                 if (msg.profile) setProfile(msg.profile);
                 if (msg.prediction) setPrediction(msg.prediction);
@@ -108,14 +114,27 @@ export default function WarRoom() {
         ws.onclose = () => {
             console.log("Monitor WebSocket closed");
             setLiveActive(false);
-            setDeceptionPhase('🔌 Monitor disconnected');
+            setDeceptionPhase('🔄 Reconnecting...');
+            // Auto-reconnect after 3 seconds unless demo is running
+            setTimeout(() => {
+                if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+                    startLiveMonitor();
+                }
+            }, 3000);
         };
     }, []);
 
     /* ── Start demo simulation ── */
     const startDemo = useCallback(() => {
-        if (demoActive) return;
+        // Close existing connection if any
+        if (wsRef.current) {
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+
         setDemoActive(true);
+        setLiveActive(false); // Ensure live is off
         setIsolated(false);
         setReportData(null);
         setPrediction(null);
@@ -123,20 +142,27 @@ export default function WarRoom() {
         setActiveNodes(['entry']);
 
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/demo`);
+        const host = window.location.hostname + ':8000'; // Bypass Vite proxy
+        const ws = new WebSocket(`${protocol}://${host}/ws/demo`);
         wsRef.current = ws;
+
+        ws.onopen = () => {
+            console.log("Demo WebSocket connected");
+        };
 
         ws.onmessage = (event) => {
             const msg = JSON.parse(event.data);
 
             if (msg.type === 'init') {
                 setAttackerIp(msg.attacker_ip);
-                termRef.current?.writeln(`\x1b[1;31m⚠  ${msg.message}\x1b[0m\n`);
+                termRef.current?.writeln(`\x1b[1;31mSTATUS: ${msg.message}\x1b[0m\n`);
             }
 
             if (msg.type === 'command') {
                 termRef.current?.writeln(`\x1b[1;32m${msg.prompt}\x1b[0m${msg.command}`);
-                if (msg.output) termRef.current?.writeln(msg.output);
+                if (msg.output) {
+                    msg.output.split('\n').forEach(line => termRef.current?.writeln(line));
+                }
                 termRef.current?.writeln('');
                 if (msg.profile) setProfile(msg.profile);
                 if (msg.prediction) setPrediction(msg.prediction);
@@ -154,7 +180,9 @@ export default function WarRoom() {
             }
 
             if (msg.type === 'dave') {
-                termRef.current?.writeln(`\x1b[1;33m${msg.message}\x1b[0m`);
+                msg.message.split('\n').forEach(line => {
+                    termRef.current?.writeln(`\x1b[1;33m${line}\x1b[0m`);
+                });
                 if (msg.profile) setProfile(msg.profile);
             }
 
@@ -169,26 +197,30 @@ export default function WarRoom() {
             }
         };
 
-        ws.onerror = () => {
+        ws.onerror = (err) => {
+            console.error("Demo WebSocket error:", err);
             termRef.current?.writeln('\x1b[1;31m[CONNECTION ERROR] Could not reach backend. Make sure the FastAPI server is running on port 8000.\x1b[0m');
             setDemoActive(false);
         };
 
         ws.onclose = () => {
+            console.log("Demo WebSocket closed");
             setDemoActive(false);
         };
-    }, [demoActive]);
+    }, []);
 
+    /* ── Auto-connect monitor on mount ── */
     useEffect(() => {
-        // Only run on mount once
+        // Auto-start the live monitor so the dashboard is always ready
         startLiveMonitor();
+
         return () => {
             if (wsRef.current) {
                 wsRef.current.onclose = null; // Prevent state update on unmount
                 wsRef.current.close();
             }
         };
-    }, []); // Empty deps for mount only
+    }, [startLiveMonitor]);
 
     return (
         <div className="relative max-w-[1600px] mx-auto px-4 py-6">
@@ -215,7 +247,7 @@ export default function WarRoom() {
                     <button
                         className={`btn-neon ${liveActive ? 'btn-neon-blue active' : 'btn-neon-blue'} flex items-center gap-2`}
                         onClick={startLiveMonitor}
-                        disabled={liveActive || demoActive}
+                        disabled={liveActive}
                     >
                         <Radio className={`w-4 h-4 ${liveActive ? 'animate-pulse' : ''}`} />
                         {liveActive ? 'Monitor Connected' : 'Connect Local CLI'}
@@ -224,7 +256,7 @@ export default function WarRoom() {
                     <button
                         className={`btn-neon ${demoActive ? 'btn-neon-red' : 'btn-neon-green'} flex items-center gap-2`}
                         onClick={startDemo}
-                        disabled={demoActive || liveActive}
+                        disabled={demoActive}
                     >
                         {demoActive ? (
                             <><Radio className="w-4 h-4 animate-pulse" /> Simulation Running...</>

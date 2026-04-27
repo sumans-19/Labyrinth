@@ -13,7 +13,7 @@ def run_shield(file_path):
         print(f"❌ Error: File {file_path} not found.")
         return
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding='utf-8') as f:
         source = f.read()
 
     print("\n" + "="*50)
@@ -31,7 +31,7 @@ def run_shield(file_path):
         print(f"  [!] {f.get('type')} (Line {f.get('line')}): {f.get('description')}")
 
     # ALWAYS write to debug file for analysis
-    with open("debug_output.py", "w") as f:
+    with open("debug_output.py", "w", encoding='utf-8') as f:
         f.write(secure_code)
 
     print("\n🔎 STEP 2: Structural Validation Gatekeeping...")
@@ -47,7 +47,7 @@ def run_shield(file_path):
     print(f"📈 Integrity Verification PASSED. Final Score: {after_score}/100")
 
     output_file = "secure_output.py"
-    with open(output_file, "w") as f:
+    with open(output_file, "w", encoding='utf-8') as f:
         f.write(secure_code)
 
     print(f"\n✅ SUCCESS: Autonomous Security Hardening complete -> {output_file}")

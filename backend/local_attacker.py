@@ -12,7 +12,9 @@ except ImportError:
     sys.exit(1)
 
 async def attacker_cli():
-    uri = "ws://localhost:8000/ws/attacker"
+    # Allow passing host IP as argument
+    host = sys.argv[1] if len(sys.argv) > 1 else "localhost"
+    uri = f"ws://{host}:8000/ws/attacker"
     print("\x1b[1;36m╔══════════════════════════════════════╗\x1b[0m")
     print("\x1b[1;36m║     LABYRINTH FORGE — ATTACKER CLI   ║\x1b[0m")
     print("\x1b[1;36m╚══════════════════════════════════════╝\x1b[0m")
