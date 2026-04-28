@@ -31,6 +31,9 @@ from ssh_server import start_ssh_honeypot
 from generate_decoy import generate_trackable_pdf, generate_trackable_html
 from lateral_interceptor import router as lateral_router, set_broadcast_callback
 from ml_engine import ml_router
+from middleware import GlobalMonitoringMiddleware
+from honeytoken_manager import HoneytokenManager
+import database
 
 
 import google.generativeai as genai
@@ -66,10 +69,17 @@ async def lifespan(app):
             print("[!] Broadcast failed: main_loop not initialized")
         
     start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+    
+    from lateral_interceptor import token_manager
+    # Generate honeytoken decoy files on startup using the shared instance
+    token_manager.create_decoy_files()
+    
     yield  # Application runs
     # Shutdown logic (if any) goes here
 
 app = FastAPI(title="Labyrinth Forge — DevSecOps Shield v2.0", version="2.0.0", lifespan=lifespan)
+
+app.add_middleware(GlobalMonitoringMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -276,6 +286,7 @@ set_broadcast_callback(broadcast_to_monitors)
 
 class ScanRequest(BaseModel):
     code: str
+    language: str = "python"
 
 class CommandRequest(BaseModel):
     session_id: str
@@ -315,6 +326,11 @@ def get_honeytoken_registry():
 def root():
     return {"status": "online", "service": "Labyrinth Forge API"}
 
+@app.get("/api/logs")
+def get_attack_logs():
+    """Returns persistent attack logs from SQLite."""
+    return {"logs": database.get_all_logs()}
+
 @app.post("/api/session")
 def create_session():
     sid = f"sess-{random.randint(10000,99999)}"
@@ -345,7 +361,8 @@ def switch_mode(req: ModeRequest):
 
 @app.post("/api/scan")
 def scan_endpoint(req: ScanRequest):
-    return scan_code(req.code)
+    from scanner import scan_code
+    return scan_code(req.code, req.language)
 
 class ExplainRequest(BaseModel):
     vuln_type: str
@@ -356,6 +373,127 @@ def explain_endpoint(req: ExplainRequest):
     from scanner import shield_ai
     explanation = shield_ai.explain_vulnerability(req.vuln_type, req.code_context)
     return {"explanation": explanation}
+
+class ExecuteRequest(BaseModel):
+    code: str
+    language: str
+
+@app.post("/api/execute")
+def execute_code(req: ExecuteRequest):
+    language = req.language.lower()
+    
+    import tempfile
+    import subprocess
+    import sys
+    import time
+    with tempfile.TemporaryDirectory() as temp_dir:
+        ext = "py" if language == "python" else "js" if language == "javascript" else "c" if language == "c" else "cpp" if language in ["cpp", "c++"] else "txt"
+        file_path = os.path.join(temp_dir, f"source.{ext}")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(req.code)
+            
+        try:
+            if language == "python":
+                cmd = [sys.executable, file_path]
+            elif language == "javascript":
+                cmd = ["node", file_path]
+            elif language == "c":
+                exe_path = os.path.join(temp_dir, "program.exe")
+                c_res = subprocess.run(["gcc", file_path, "-o", exe_path], capture_output=True, text=True)
+                if c_res.returncode != 0:
+                    return {"output": "GCC Compilation Error:\n" + c_res.stderr, "status": "error", "execution_time": "0.000s"}
+                cmd = [exe_path]
+            elif language in ["cpp", "c++"]:
+                exe_path = os.path.join(temp_dir, "program.exe")
+                c_res = subprocess.run(["g++", file_path, "-o", exe_path], capture_output=True, text=True)
+                if c_res.returncode != 0:
+                    return {"output": "G++ Compilation Error:\n" + c_res.stderr, "status": "error", "execution_time": "0.000s"}
+                cmd = [exe_path]
+            elif language == "java":
+                return {"output": "Mock Java execution successful. Sandbox complete.", "status": "success", "execution_time": "0.012s"}
+            else:
+                return {"error": "Unsupported language", "status": "failed"}
+
+            start_time = time.time()
+            # Provide dummy input to prevent gets()/scanf() or input() from hanging the execution sandbox
+            dummy_input = "LabyrinthCyberSec_Payload_Test\n" * 10
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                input=dummy_input
+            )
+            exec_time = time.time() - start_time
+            
+            output = result.stdout
+            if result.stderr:
+                output += "\nError Output:\n" + result.stderr
+                
+            return {
+                "output": output,
+                "status": "success" if result.returncode == 0 else "error",
+                "execution_time": f"{exec_time:.3f}s"
+            }
+        except subprocess.TimeoutExpired:
+            return {"output": "Execution timed out (5s limit exceeded). Possible infinite loop.", "status": "error", "execution_time": "5.000s"}
+        except Exception as e:
+            return {"output": f"Runtime error: {str(e)}", "status": "error", "execution_time": "0.000s"}
+
+class ExploitRequest(BaseModel):
+    vulnerability_id: str
+    vulnerability_type: str
+    code_snippet: str
+    line: int
+
+@app.post("/api/exploit")
+async def simulate_exploit(req: ExploitRequest):
+    if gemini_model:
+        prompt = f"""
+        Given the following vulnerability:
+        Type: {req.vulnerability_type}
+        Line: {req.line}
+        Code: {req.code_snippet}
+        
+        1. Generate a Python HACKING SCRIPT (e.g. using pwntools or requests) that an attacker would use to exploit this vulnerability.
+        2. Generate the SIMULATED TERMINAL OUTPUT showing the script executing and successfully compromising the sandbox (e.g. crashing it or leaking data).
+        
+        Format your response EXACTLY like this:
+        [EXPLOIT SCRIPT]
+        <script code here>
+
+        [SIMULATION OUTPUT]
+        <terminal output here>
+        """
+        response = await asyncio.to_thread(gemini_model.generate_content, prompt)
+        return {"simulation": response.text.strip()}
+    return {"simulation": "[EXPLOIT SCRIPT]\npython -c 'print(\"A\"*200)' | ./vuln\n\n[SIMULATION OUTPUT]\nSegmentation Fault (core dumped)."}
+
+class LiveAttackRequest(BaseModel):
+    vulnerable_code: str
+    exploit_script: str
+
+@app.post("/api/live_attack")
+async def live_attack(req: LiveAttackRequest):
+    if gemini_model:
+        prompt = f"""
+        You are an advanced exploit simulator engine.
+        
+        Target Vulnerable Code:
+        {req.vulnerable_code}
+        
+        Attacker's Payload/Script:
+        {req.exploit_script}
+        
+        Generate the dramatic, highly-detailed terminal output showing the payload successfully executing and exploiting the vulnerable application. 
+        Show realistic exploitation steps (e.g., overflowing buffer, spawning shell, whoami, leaking shadow file, extracting data, etc.).
+        Do not explain anything. Output ONLY the raw terminal text output, about 10-15 lines.
+        """
+        response = await asyncio.to_thread(gemini_model.generate_content, prompt)
+        return {"output": response.text.strip()}
+    return {"output": "[!] Offline Mode.\n> Injecting payload...\n> Overwriting instruction pointer...\n> Shell spawned.\nroot@labyrinth:~# "}
+
 
 @app.get("/api/report/download/{session_id}")
 def download_pdf_report(session_id: str):

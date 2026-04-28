@@ -4,7 +4,8 @@ import json
 from devsecops_shield.config import GROQ_API_KEY, MODEL
 
 # System prompt is now an Audit-First Directive with Strict Enforcement
-SYSTEM_PROMPT = """
+def get_system_prompt(language: str) -> str:
+    return f"""
 You are the SUPREME AI SECURITY ORACLE — the absolute authority on autonomous remediation.
 
 MISSION:
@@ -12,37 +13,31 @@ Your cognitive audit is the final word. You do not just "patch" code; you RECONS
 1. PERFORM AN ABSOLUTE SECURITY AUDIT: Identify every structural weakness with 100% precision.
 2. SUPREME REMEDIATION: Refactor the entire source into a production-hardened active defense bastion.
 
-STRIC SECURITY DIRECTIVES (MANDATORY):
+STRICT SECURITY DIRECTIVES (MANDATORY):
 - ZERO REFACTOR: Do NOT change existing routes, business logic, or response formats.
-- SQL: USE ABSOLUTE PARAMETERIZATION. 'cursor.execute("SELECT ... WHERE id = ?", (id,))'.
-- COMMANDS: Validate 'ip' via ipaddress.ip_address. Use subprocess.run(..., timeout=3, check=True).
-- XSS: USE JINJA2 BINDING. 'render_template_string("...{{ query }}...", query=query)'.
-- SANDBOX: Use BASE_DIR = os.path.abspath(...). Use os.path.abspath(os.path.join(BASE_DIR, filename)). Enforce prefix check.
-- FAIL-FAST: ALWAYS check for 'FLASK_SECRET_KEY' and 'SHIELD_API_TOKEN' and raise RuntimeError if missing.
-- BASE64: Implement secure_b64_decode(data) with max 4096 bytes and validate=True. Return 400 on error.
-- TOKENS: Implement require_token decorator for X-Shield-Token.
-- LIMITS: Set app.config["MAX_CONTENT_LENGTH"] = 4 * 1024.
-- RATE LIMIT: Apply minimal decorator only to /login and /register.
-- DEBUG: Always set app.run(debug=False).
-- SYNTAX: ENSURE VALID PYTHON 3.10+ SYNTAX. Use parentheses '()' for multi-line 'if' conditions or expressions. NEVER end a line with 'or' or 'and' without a backslash or parenthesis.
+- SQL: USE ABSOLUTE PARAMETERIZATION appropriate for the language.
+- COMMANDS: Validate input strictly. Use safe execution APIs instead of shell evaluations (e.g. subprocess.run in Python without shell=True, execFile in Node.js, etc.).
+- SANDBOX: Validate file paths absolutely to prevent path traversal.
+- FAIL-FAST: ALWAYS add necessary environment and dependency checks.
+- SYNTAX: ENSURE VALID AND IDIOMATIC {language.upper()} SYNTAX.
 
 OUTPUT FORMAT:
-You MUST return a JSON object:
-{
+You MUST return a JSON object. If the code is perfectly secure with zero vulnerabilities, return an empty array for "findings": "findings": []. Otherwise:
+{{
   "findings": [
-    {
+    {{
       "type": "Vulnerability Name",
       "severity": "CRITICAL/HIGH/MEDIUM",
       "line": 12,
       "description": "Deep reasoning on the vulnerability",
       "snippet": "Vulnerable code snippet"
-    }
+    }}
   ],
-  "secure_code": "The full hardened python source code"
-}
+  "secure_code": "The full hardened {language} source code"
+}}
 """
 
-def remediate_code(source_code):
+def remediate_code(source_code, language="python"):
     url = "https://api.groq.com/openai/v1/chat/completions"
 
     headers = {
@@ -53,7 +48,7 @@ def remediate_code(source_code):
     payload = {
         "model": MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": get_system_prompt(language)},
             {"role": "user", "content": source_code}
         ],
         "temperature": 0.1,

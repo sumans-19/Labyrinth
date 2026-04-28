@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Users, Shield, Database, Cloud, Lock, Terminal, 
     AlertTriangle, Server, Key, ArrowLeft, ArrowRight,
-    Activity, Globe, Search, RefreshCw
+    Activity, Globe, Search, RefreshCw, Folder, FileText
 } from 'lucide-react';
 
 const ROLES = [
@@ -51,6 +51,15 @@ export default function LateralMoverPortal({ onNavigate }) {
     const [selectedRole, setSelectedRole] = useState(null);
     const [alert, setAlert] = useState(null);
     const [isTriggering, setIsTriggering] = useState(false);
+    const [toastAlert, setToastAlert] = useState(null);
+
+    // Auto-hide toast after 3 seconds
+    useEffect(() => {
+        if (toastAlert) {
+            const timer = setTimeout(() => setToastAlert(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toastAlert]);
     const [honeytokens, setHoneytokens] = useState({});
 
     // Fetch live honeytokens from the registry (simulation)
@@ -72,6 +81,17 @@ export default function LateralMoverPortal({ onNavigate }) {
 
         try {
             const registryRes = await fetch(`http://${window.location.hostname}:8000/api/decoys/honeytokens`);
+            
+            if (!registryRes.ok) {
+                if (registryRes.status === 403) {
+                    setAlert({ type: 'error', message: 'BLOCKED: Your IP has been blacklisted by the Threat Engine.' });
+                } else {
+                    setAlert({ type: 'error', message: `Failed to fetch tokens (${registryRes.status}).` });
+                }
+                setIsTriggering(false);
+                return;
+            }
+            
             const registryData = await registryRes.json();
             
             const targetTokenEntry = Object.entries(registryData).find(([hash, info]) => info.type === token.type);
@@ -129,9 +149,264 @@ export default function LateralMoverPortal({ onNavigate }) {
     const consoleEndRef = React.useRef(null);
 
     const ROLE_FILES = {
-        'cloud-dev': ['main.tf', 'deploy.sh', 'prod_backup_keys.env', 'config.json'],
-        'db-admin': ['schema.sql', 'db_sync_creds.env', 'maintenance.log'],
-        'sec-auditor': ['audit_report.pdf', 'internal_api_tokens.env', 'vault_access.log']
+        'cloud-dev': ['main.tf', 'deploy.sh', 'prod_backup_keys.env', 'config.json', 'readme.md', 'k8s_deployment.yaml'],
+        'db-admin': ['schema.sql', 'db_sync_creds.env', 'maintenance.log', 'backup_schedule.txt', 'query_optimization.sql'],
+        'sec-auditor': ['audit_report.pdf', 'internal_api_tokens.env', 'vault_access.log', 'compliance_guidelines.txt', 'incident_response.md']
+    };
+
+    const FILE_CONTENTS = {
+        'main.tf': `provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_vpc" "main_vpc" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags = { Name = "production-vpc" }
+}
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.main_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_s3_bucket" "prod_backup" {
+  bucket = "prod-db-backups-2026"
+  acl    = "private"
+}
+
+resource "aws_eks_cluster" "prod_cluster" {
+  name     = "primary-production-cluster"
+  role_arn = aws_iam_role.eks_master.arn
+  vpc_config {
+    subnet_ids = [aws_subnet.public_subnet.id]
+  }
+}`,
+        'deploy.sh': `#!/bin/bash
+set -e
+
+echo "[1/5] Authenticating with AWS ECR..."
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com
+
+echo "[2/5] Building Docker image..."
+docker build -t microservice-core:latest .
+
+echo "[3/5] Tagging image for registry..."
+docker tag microservice-core:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/microservice-core:v2.4.1
+
+echo "[4/5] Pushing to repository..."
+docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/microservice-core:v2.4.1
+
+echo "[5/5] Updating Kubernetes deployment..."
+kubectl set image deployment/microservice-core core=123456789012.dkr.ecr.us-east-1.amazonaws.com/microservice-core:v2.4.1 --record
+kubectl rollout status deployment/microservice-core
+
+echo "Deployment complete! Production is now running v2.4.1"`,
+        'config.json': `{
+  "environment": "production",
+  "debug": false,
+  "max_connections": 1000,
+  "timeout_ms": 5000,
+  "features": {
+    "new_billing_engine": true,
+    "beta_dashboard": false,
+    "legacy_api_fallback": true
+  },
+  "endpoints": {
+    "auth": "https://auth.internal.corp/v1",
+    "payment": "https://pay.internal.corp/v2",
+    "analytics": "tcp://kafka.analytics.corp:9092"
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "requests_per_minute": 600,
+    "burst_capacity": 50
+  }
+}`,
+        'readme.md': `# Cloud Dev Workspace
+## Infrastructure Control Node
+
+Welcome to the centralized development node for the Labyrinth Forge infrastructure.
+
+### Prerequisites
+- Terraform v1.5.0+
+- AWS CLI v2 configured with SSO
+- kubectl & helm
+
+### Deployment Pipeline
+All deployments are handled via GitHub Actions. Do NOT run \`deploy.sh\` manually unless the CI pipeline is down.
+
+### Emergency Procedures
+If the production cluster loses quorum:
+1. SSH into the bastion host.
+2. Check \`/var/log/syslog\` for OOM errors.
+3. Manually scale the ASG up by 2 instances.
+4. Notify the DB Admin team immediately.`,
+        'k8s_deployment.yaml': `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-gateway
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment-gateway
+  template:
+    metadata:
+      labels:
+        app: payment-gateway
+    spec:
+      containers:
+      - name: gateway-service
+        image: registry.corp.local/payment-gateway:v1.12
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        envFrom:
+        - secretRef:
+            name: gateway-secrets`,
+        'schema.sql': `CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_sessions (
+  session_id VARCHAR(128) PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  ip_address INET,
+  user_agent TEXT,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE TABLE transaction_logs (
+  tx_id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  amount DECIMAL(10, 2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'USD',
+  status VARCHAR(20) DEFAULT 'PENDING',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_tx_user_status ON transaction_logs(user_id, status);`,
+        'maintenance.log': `[2026-04-28 02:15:00] [INFO] Starting scheduled vacuum analyze on database 'production_db'...
+[2026-04-28 02:15:12] [INFO] Vacuuming table 'transaction_logs'...
+[2026-04-28 02:15:45] [INFO] Vacuum complete. Reclaimed 1.2GB of dead tuples.
+[2026-04-28 02:16:00] [INFO] Rebuilding index 'idx_tx_user_status'...
+[2026-04-28 02:18:22] [INFO] Index rebuild successful. Duration: 142 seconds.
+[2026-04-28 02:19:00] [INFO] Initiating DB Sync to read-replica-1...
+[2026-04-28 02:19:05] [WARN] High replication lag detected (1.5s). Throttling WAL sender.
+[2026-04-28 02:22:10] [INFO] Replication caught up. Sync service normal.
+[2026-04-28 02:30:00] [INFO] Nightly maintenance complete.`,
+        'backup_schedule.txt': `###########################################
+# DATABASE BACKUP AND RETENTION SCHEDULE #
+###########################################
+
+# Hourly Transaction Log Backups
+0 * * * * /opt/scripts/wal_archive.sh >> /var/log/wal_archive.log 2>&1
+
+# Daily Differential Backups (2 AM)
+0 2 * * * /opt/scripts/pg_dump_diff.sh --target s3://prod-db-backups-2026/daily
+
+# Weekly Full Backups (Sunday 4 AM)
+0 4 * * 0 /opt/scripts/pg_dump_full.sh --target s3://prod-db-backups-2026/weekly
+
+# Retention Policies:
+# - WAL logs: kept for 7 days
+# - Daily diffs: kept for 30 days
+# - Weekly fulls: kept for 1 year (moved to Glacier after 90 days)`,
+        'query_optimization.sql': `-- Problem: The user dashboard is loading slowly because of the recent transactions widget.
+-- Current Query (Cost: 4500.22, Time: 1.2s):
+-- SELECT * FROM transaction_logs WHERE user_id = 'xxx' ORDER BY created_at DESC LIMIT 5;
+
+-- Proposed Optimized Query using CTE and Covering Index
+WITH recent_tx AS (
+  SELECT tx_id, amount, currency, status, created_at
+  FROM transaction_logs
+  WHERE user_id = :current_user_id
+  AND status = 'COMPLETED'
+  ORDER BY created_at DESC
+  LIMIT 5
+)
+SELECT u.username, r.*
+FROM recent_tx r
+JOIN users u ON u.id = :current_user_id;
+
+-- Action Item: Ensure covering index exists:
+-- CREATE INDEX CONCURRENTLY idx_tx_user_recent ON transaction_logs(user_id, created_at DESC) INCLUDE (amount, currency, status);`,
+        'audit_report.pdf': `[SYSTEM PARSER: Extracting text from binary PDF stream]
+======================================================
+LABYRINTH FORGE SECURITY AUDIT - Q2 2026
+Prepared by: External Red Team Delta
+
+EXECUTIVE SUMMARY:
+The infrastructure presents a hardened exterior, but internal lateral movement controls are severely lacking. If an attacker breaches the perimeter, the "soft center" allows unabated access to critical systems.
+
+FINDINGS:
+1. [CRITICAL] Legacy internal APIs do not enforce TLS.
+2. [HIGH] Developers are storing plaintext shadow credentials in local .env files.
+3. [HIGH] Vault access logs show anomalous activity from the VPN subnet.
+4. [MEDIUM] S3 Production Backups lack strict IAM bounding.
+
+RECOMMENDATIONS:
+- Immediately implement Zero Trust architectures for internal service-to-service communication.
+- Rotate all AWS Access Keys stored in development environments.
+- Enforce strict role-based access control (RBAC) on the Vault.
+======================================================`,
+        'vault_access.log': `[2026-04-28T08:00:12Z] [INFO] Vault unsealed by key share 1 (admin_alpha)
+[2026-04-28T08:00:15Z] [INFO] Vault unsealed by key share 3 (admin_gamma)
+[2026-04-28T08:00:16Z] [INFO] Core: Vault is unsealed
+[2026-04-28T09:12:44Z] [WARN] core: login attempt failed: error="invalid token" client_ip="10.0.0.45"
+[2026-04-28T09:12:45Z] [WARN] core: login attempt failed: error="invalid token" client_ip="10.0.0.45"
+[2026-04-28T09:12:46Z] [WARN] core: login attempt failed: error="invalid token" client_ip="10.0.0.45"
+[2026-04-28T09:13:00Z] [ALERT] core: IP 10.0.0.45 temporarily blocked due to brute force attempt.
+[2026-04-28T10:45:12Z] [INFO] core: successful login client_ip="10.0.5.112" policies="[db-admin-policy, default]"
+[2026-04-28T10:45:15Z] [INFO] audit: synced 450 events to remote SIEM.`,
+        'compliance_guidelines.txt': `INTERNAL COMPLIANCE & SECURITY POLICY
+Last Updated: January 2026
+
+1. CREDENTIAL MANAGEMENT
+- All long-lived credentials MUST be rotated every 90 days.
+- Hardcoding passwords, API keys, or AWS access keys in source code is a terminable offense.
+- Use HashiCorp Vault for dynamic secret generation whenever possible.
+
+2. ACCESS CONTROL
+- The principle of least privilege (PoLP) applies to all roles.
+- Root access to production servers requires dual-authorization and a logged change request.
+- Cross-role access (e.g., a Developer accessing Audit logs) will trigger an automated SOC alert.
+
+3. INCIDENT REPORTING
+- If you suspect your workstation has been compromised, disconnect from the VPN immediately and contact IT Security.
+- Do NOT attempt to investigate the breach yourself.`,
+        'incident_response.md': `# Incident Response Playbook: Lateral Movement Detection
+
+If a lateral movement alert is triggered by the Threat Engine, follow these steps:
+
+## Phase 1: Triage
+1. Review the \`attack_logs\` table in the SIEM dashboard to identify the compromised IP.
+2. Cross-reference the IP with the VPN logs to identify the user identity.
+
+## Phase 2: Containment
+1. If the threat score exceeds 70 (HIGH), the Global Monitoring Middleware should have already tarpitted the IP.
+2. Manually revoke the user's active session token.
+3. Isolate the affected node using the AWS EC2 Security Group \`sg-quarantine\`.
+
+## Phase 3: Eradication
+1. Identify how the attacker gained initial access (phishing, vulnerable exposed service).
+2. If honeytokens were triggered, rotate the actual production keys associated with that decoy immediately as a precaution.
+3. Wipe and re-image the compromised workstation.`
     };
 
     useEffect(() => {
@@ -168,19 +443,40 @@ export default function LateralMoverPortal({ onNavigate }) {
         } else if (baseCmd === 'whoami') {
             newHistory.push({ type: 'info', text: `${selectedRole.id}@internal-server-01` });
         } else if (baseCmd === 'ls') {
-            const files = ROLE_FILES[selectedRole.id] || [];
-            newHistory.push({ type: 'info', text: files.join('    ') });
+            // Show all files in the system to encourage lateral movement
+            const allFiles = Object.values(ROLE_FILES).flat();
+            const lsLines = allFiles.map(file => ({ type: 'info', text: file }));
+            newHistory.push(...lsLines);
         } else if (baseCmd === 'cat') {
             const fileName = args[1];
-            const files = ROLE_FILES[selectedRole.id] || [];
+            const ownFiles = ROLE_FILES[selectedRole.id] || [];
+            const allFiles = Object.values(ROLE_FILES).flat();
             
             if (!fileName) {
                 newHistory.push({ type: 'error', text: 'usage: cat <file_name>' });
-            } else if (!files.includes(fileName)) {
+            } else if (!allFiles.includes(fileName)) {
                 newHistory.push({ type: 'error', text: `cat: ${fileName}: No such file or directory` });
+            } else if (!ownFiles.includes(fileName)) {
+                // Cross-role access detected!
+                newHistory.push({ type: 'error', text: `cat: ${fileName}: Permission denied` });
+                
+                // Show popup notification
+                setToastAlert({ 
+                    title: 'LATERAL MOVEMENT DETECTED', 
+                    message: `Cross-role access to ${fileName} blocked and reported.` 
+                });
+                
+                // Trigger backend alert
+                fetch(`http://${window.location.hostname}:8000/api/v1/internal/file-access`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: fileName, role: selectedRole.id })
+                }).catch(err => console.error(err));
+                
+                setAlert({ type: 'success', message: 'Cross-Role Access Detected. Check Monitor Dashboard!' });
             } else {
-                // Logic for opening a file
-                if (fileName.endsWith('.env') || fileName === 'config.json' || fileName.includes('creds') || fileName.includes('keys')) {
+                // Logic for opening their OWN file
+                if (fileName.endsWith('.env') || fileName.includes('creds') || fileName.includes('keys')) {
                     newHistory.push({ type: 'warning', text: `[!] ALERT: Opening sensitive system file: ${fileName}` });
                     newHistory.push({ type: 'info', text: '[*] Extracting credentials for automated pivot...' });
                     
@@ -191,7 +487,11 @@ export default function LateralMoverPortal({ onNavigate }) {
                     newHistory.push({ type: 'success', text: '[+] Honeytoken Triggered! Check your main dashboard.' });
                 } else {
                     newHistory.push({ type: 'info', text: `--- Content of ${fileName} ---` });
-                    newHistory.push({ type: 'info', text: `[Simulation] Source code for ${fileName} loaded.` });
+                    const content = FILE_CONTENTS[fileName] || '[No readable content found]';
+                    const lines = content.split('\n');
+                    lines.forEach(line => {
+                        newHistory.push({ type: 'success', text: line });
+                    });
                 }
             }
         } else {
@@ -251,7 +551,20 @@ export default function LateralMoverPortal({ onNavigate }) {
     }
 
     return (
-        <div className="max-w-[1400px] mx-auto px-6 py-10 space-y-8 animate-fade-in">
+        <div className="max-w-[1400px] mx-auto px-6 py-10 space-y-8 animate-fade-in relative">
+            {/* Global Toast Notification */}
+            {toastAlert && (
+                <div className="fixed bottom-10 right-10 z-50 animate-fade-in">
+                    <div className="glass-card p-4 border border-neon-red/50 bg-black/80 flex items-center gap-4 shadow-[0_0_20px_rgba(255,0,0,0.5)]">
+                        <AlertTriangle className="w-8 h-8 text-neon-red animate-pulse" />
+                        <div>
+                            <h4 className="text-neon-red font-[Orbitron] font-bold text-sm tracking-widest">{toastAlert.title}</h4>
+                            <p className="text-gray-300 font-mono text-[10px] mt-1">{toastAlert.message}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Workspace Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-8">
                 <div className="flex items-center gap-6">
@@ -285,47 +598,22 @@ export default function LateralMoverPortal({ onNavigate }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Authorized Section */}
+                {/* Simulation Console Area */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Terminal className="w-5 h-5 text-gray-500" />
-                        <h2 className="font-[Orbitron] text-sm font-bold text-white uppercase tracking-widest">Authorized Internal Services</h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {selectedRole.authorized_tools.map((tool, i) => (
-                            <div key={i} className="glass-card p-6 border border-white/5 bg-white/5 hover:border-white/20 transition-all">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="p-2 bg-black/40 rounded border border-white/5">
-                                        <Server className="w-5 h-5 text-gray-400" />
-                                    </div>
-                                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10 uppercase">
-                                        {tool.status}
-                                    </span>
-                                </div>
-                                <h3 className="text-white font-bold mb-1">{tool.name}</h3>
-                                <code className="text-[10px] text-neon-blue font-mono">{tool.endpoint}</code>
-                                <button className="w-full mt-4 py-2 bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400 hover:text-white hover:bg-white/10 transition-all uppercase">
-                                    Launch Interface
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
                     {/* Simulation Console */}
-                    <div className="glass-card bg-black/80 border border-white/10 p-6 font-mono text-[11px] overflow-hidden">
-                        <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
-                            <div className="flex items-center gap-2">
-                                <div className="flex gap-1">
-                                    <div className="w-2 h-2 rounded-full bg-red-500/50" />
-                                    <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-                                    <div className="w-2 h-2 rounded-full bg-green-500/50" />
+                    <div className="glass-card bg-black/80 border border-white/10 p-6 font-mono text-[11px] flex flex-col h-[550px] overflow-hidden shadow-[0_0_30px_rgba(0,184,255,0.1)]">
+                        <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-red-500/50 hover:bg-red-500 transition-colors cursor-pointer" />
+                                    <div className="w-3 h-3 rounded-full bg-yellow-500/50 hover:bg-yellow-500 transition-colors cursor-pointer" />
+                                    <div className="w-3 h-3 rounded-full bg-green-500/50 hover:bg-green-500 transition-colors cursor-pointer" />
                                 </div>
                                 <span className="text-gray-500 ml-2 italic">internal_terminal --bash</span>
                             </div>
                             <span className="text-gray-600">v2.4.1-dist</span>
                         </div>
-                        <div className="space-y-1.5 h-[220px] overflow-y-auto custom-scrollbar mb-4 pr-2">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar mb-4 pr-2 space-y-2">
                             {consoleHistory.map((line, i) => (
                                 <p key={i} className={
                                     line.type === 'input' ? 'text-neon-green' : 
@@ -339,12 +627,12 @@ export default function LateralMoverPortal({ onNavigate }) {
                             ))}
                             <div ref={consoleEndRef} />
                         </div>
-                        <form onSubmit={handleCommand} className="flex items-center gap-2 border-t border-white/5 pt-3">
-                            <span className="text-neon-green font-bold">$</span>
+                        <form onSubmit={handleCommand} className="flex items-center gap-3 border-t border-white/5 pt-4">
+                            <span className="text-neon-green font-bold text-sm">$</span>
                             <input 
                                 type="text"
                                 autoFocus
-                                className="bg-transparent border-none outline-none text-white w-full"
+                                className="bg-transparent border-none outline-none text-white w-full text-sm font-mono tracking-wide placeholder:text-gray-600"
                                 value={commandInput}
                                 onChange={(e) => setCommandInput(e.target.value)}
                                 placeholder="Type commands here..."
@@ -353,54 +641,27 @@ export default function LateralMoverPortal({ onNavigate }) {
                     </div>
                 </div>
 
-                {/* Unauthorized/Trap Section */}
+                {/* Workspace Directory / Accessible Files Section */}
                 <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <AlertTriangle className="w-5 h-5 text-neon-amber" />
-                        <h2 className="font-[Orbitron] text-sm font-bold text-neon-amber uppercase tracking-widest">Restricted Assets (Decoys)</h2>
+                        <Folder className="w-5 h-5 text-neon-blue" />
+                        <h2 className="font-[Orbitron] text-sm font-bold text-neon-blue uppercase tracking-widest">Workspace Directory</h2>
                     </div>
 
-                    {selectedRole.honeytokens.map((token, i) => (
-                        <div key={i} className="glass-card p-6 border border-neon-red/20 bg-neon-red/5 hover:bg-neon-red/10 transition-all relative group">
-                            <div className="absolute top-0 right-0 p-4">
-                                <Lock className="w-6 h-6 text-neon-red opacity-20" />
-                            </div>
-                            
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 bg-neon-red/10 rounded border border-neon-red/30">
-                                    <Key className="w-5 h-5 text-neon-red" />
-                                </div>
-                                <div>
-                                    <h3 className="text-white font-bold text-sm">{token.name}</h3>
-                                    <p className="text-[10px] text-gray-500 font-mono uppercase tracking-tighter">Requires {token.type}</p>
-                                </div>
-                            </div>
-
-                            <p className="text-[11px] text-gray-400 mb-6 leading-relaxed">
-                                Accessing this asset requires high-level privileges. Using discovered shadow credentials from the local .env might grant access.
-                            </p>
-
-                            <button 
-                                onClick={() => handleTriggerHoneytoken(token)}
-                                disabled={isTriggering}
-                                className="w-full py-3 bg-neon-red/20 border border-neon-red/40 text-neon-red text-xs font-bold font-[Orbitron] tracking-widest hover:bg-neon-red hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase"
-                            >
-                                {isTriggering ? 'Attempting Breach...' : 'Trigger Unauthorized Access'}
-                            </button>
-
-                            {alert && alert.type === 'error' && (
-                                <p className="mt-3 text-[10px] text-neon-red font-mono animate-pulse">{alert.message}</p>
-                            )}
-                        </div>
-                    ))}
-
-                    <div className="p-4 bg-neon-amber/5 border border-neon-amber/20 rounded-xl">
-                        <h4 className="text-[10px] font-bold text-neon-amber uppercase mb-2 flex items-center gap-2">
-                            <Shield className="w-3 h-3" /> Educational Note
-                        </h4>
-                        <p className="text-[10px] text-gray-400 leading-relaxed font-sans">
-                            In a real scenario, the attacker doesn't click a button. They run a script that automatically uses these credentials. Clicking "Trigger" simulates that script execution.
+                    <div className="glass-card p-6 border border-neon-blue/20 bg-neon-blue/5 shadow-[0_0_20px_rgba(0,184,255,0.05)]">
+                        <h3 className="text-white font-bold text-sm mb-4 border-b border-white/10 pb-2">Accessible Files</h3>
+                        <p className="text-[10px] text-gray-400 font-sans mb-6 leading-relaxed">
+                            The following files have been mounted to your active session based on your identity access level. Use the terminal to interact with them.
                         </p>
+                        
+                        <ul className="space-y-4">
+                            {ROLE_FILES[selectedRole.id].map(file => (
+                                <li key={file} className="flex items-center gap-3 p-3 rounded bg-black/40 border border-white/5 hover:border-white/20 hover:bg-white/5 transition-colors cursor-default group">
+                                    <FileText className="w-4 h-4 text-neon-green group-hover:text-neon-blue transition-colors" />
+                                    <span className="font-mono text-xs text-gray-300 group-hover:text-white transition-colors">{file}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
             </div>
