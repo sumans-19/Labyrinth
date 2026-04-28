@@ -25,10 +25,17 @@ def run_shield(file_path):
     
     findings = ai_result.get("findings", [])
     secure_code = ai_result.get("secure_code", "# AI Error")
+    threat_analysis = ai_result.get("threat_analysis", "")
 
     print(f"📊 AI Detected {len(findings)} Vulnerabilities.")
     for f in findings:
         print(f"  [!] {f.get('type')} (Line {f.get('line')}): {f.get('description')}")
+        
+    if threat_analysis:
+        analysis_file = "threat_analysis.md"
+        with open(analysis_file, "w", encoding='utf-8') as f:
+            f.write(threat_analysis)
+        print(f"\n📖 Educational Threat Analysis generated -> {analysis_file}")
 
     # ALWAYS write to debug file for analysis
     with open("debug_output.py", "w", encoding='utf-8') as f:
