@@ -11,29 +11,30 @@ from devsecops_shield.scorer import calculate_score
 from devsecops_shield.ai_remediator import remediate_code
 from devsecops_shield.validator import validate_secure
 
-def scan_code(code: str) -> dict:
+def scan_code(code: str, language: str = "python") -> dict:
     """
     Super-Intelligence Bridge: Leading with AI Analysis & Remediation.
     """
     try:
         # 1. AI Security Audit & Remediation (One-Pass Deep Reasoning)
-        ai_result = remediate_code(code)
+        ai_result = remediate_code(code, language)
         
         ai_findings = ai_result.get("findings", [])
         secure_code = ai_result.get("secure_code", "# AI Error: No code returned.")
 
         # 2. Validation Enforcement (Silent Deterministic Gate)
-        is_secure = validate_secure(secure_code)
+        is_secure = validate_secure(secure_code, language)
         
         # 3. Post-Fix Verification Scan
-        # We still run a deterministic scan on the AI's output for final scoring
-        from devsecops_shield.analyzer import scan as final_verify_scan
-        after_findings = final_verify_scan(secure_code)
-        after_score = calculate_score(after_findings)
-        
-        # 4. Global Score Calculation (Based on AI Findings)
-        # We calculate initial risk score based on what the AI found
-        before_score = calculate_score([{"type": f["severity"], "sink": f["type"]} for f in ai_findings])
+        # We still run a deterministic scan on the AI's output for final scoring if Python
+        if language.lower() == "python":
+            from devsecops_shield.analyzer import scan as final_verify_scan
+            after_findings = final_verify_scan(secure_code)
+            after_score = calculate_score(after_findings)
+            before_score = calculate_score([{"type": f["severity"], "sink": f["type"]} for f in ai_findings])
+        else:
+            after_score = 100 if is_secure else 0
+            before_score = calculate_score([{"type": f["severity"], "sink": f["type"]} for f in ai_findings])
 
         # 5. Format Findings for UI (Using AI's Deep Analysis)
         formatted_findings = []
