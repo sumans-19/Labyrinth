@@ -30,6 +30,7 @@ from scanner import scan_code
 from ssh_server import start_ssh_honeypot
 from generate_decoy import generate_trackable_pdf, generate_trackable_html
 from lateral_interceptor import router as lateral_router, set_broadcast_callback
+from ml_engine import ml_router
 
 
 import google.generativeai as genai
@@ -80,6 +81,8 @@ app.add_middleware(
 
 # Include Lateral Movement Interceptor Router
 app.include_router(lateral_router)
+# Include ML Engine Router
+app.include_router(ml_router)
 
 def get_client_ip(request: Request):
     """Robust client IP detection for proxies like Ngrok."""

@@ -10,6 +10,7 @@ import IncidentReport from '../components/IncidentReport';
 import CyberCorner from '../components/CyberCorner';
 import MatrixRain from '../components/MatrixRain';
 import ThreatIntelligenceGraph from '../components/ThreatIntelligenceGraph';
+import MLAnalyticsPanel from '../components/MLAnalyticsPanel';
 import { Zap, Radio, Wifi, WifiOff } from 'lucide-react';
 
 export default function WarRoom() {
@@ -286,6 +287,7 @@ export default function WarRoom() {
                         <HackerProfile profile={profile} />
                     </div>
                     <ThreatPrediction prediction={prediction} active={demoActive || liveActive} />
+                    <MLAnalyticsPanel profile={profile} commands={commands} active={demoActive || liveActive} />
                     <DeceptionStatus phase={deceptionPhase} active={demoActive} />
                     <div className="relative">
                         <CyberCorner position="bottom-left" className="text-neon-purple" />
