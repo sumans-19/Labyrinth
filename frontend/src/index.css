@@ -231,6 +231,33 @@ body {
   text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes progressShrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-progress-shrink {
+  animation: progressShrink 3s linear forwards;
+}
+
+.animate-scan {
+  animation: scanline 2s linear infinite;
+}
+
 /* ═══ Scan Animation (for Threat Intelligence Graph) ═══ */
 @keyframes scan {
   from { transform: translateY(-100%); }

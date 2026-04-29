@@ -558,14 +558,37 @@ If a lateral movement alert is triggered by the Threat Engine, follow these step
 
     return (
         <div className="max-w-[1400px] mx-auto px-6 py-10 space-y-8 animate-fade-in relative">
-            {/* Global Toast Notification */}
+            {/* Forensic Toast Notification */}
             {toastAlert && (
-                <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-                    <div className="glass-card p-4 border border-neon-red/50 bg-black/80 flex items-center gap-4 shadow-[0_0_20px_rgba(255,0,0,0.5)]">
-                        <AlertTriangle className="w-8 h-8 text-neon-red animate-pulse" />
-                        <div>
-                            <h4 className="text-neon-red font-[Orbitron] font-bold text-sm tracking-widest">{toastAlert.title}</h4>
-                            <p className="text-gray-300 font-mono text-[10px] mt-1">{toastAlert.message}</p>
+                <div className="fixed bottom-8 right-8 z-[1000] animate-slide-in-right w-full max-w-md">
+                    <div className="glass-card p-5 border-l-4 border-l-neon-red border-y-white/10 border-r-white/10 bg-black/90 flex items-start gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl relative group">
+                        {/* Scanning scanline effect */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neon-red/5 to-transparent h-1/2 w-full animate-scan pointer-events-none opacity-30" />
+                        
+                        <div className="relative z-10 mt-1">
+                            <AlertTriangle className="w-6 h-6 text-neon-red" />
+                        </div>
+                        
+                        <div className="relative z-10 flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                                <h4 className="text-neon-red font-[Orbitron] font-black text-xs tracking-widest uppercase">
+                                    Forensic Alert: Lateral Movement
+                                </h4>
+                                <span className="text-[9px] font-mono text-gray-500 uppercase">Just Now</span>
+                            </div>
+                            <p className="text-gray-200 font-mono text-[11px] leading-relaxed border-t border-white/5 pt-2">
+                                {toastAlert.message}
+                            </p>
+                            <div className="mt-3 flex items-center gap-2">
+                                <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-neon-red animate-progress-shrink" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Top Accent */}
+                        <div className="absolute top-0 right-0 p-1">
+                            <div className="w-1 h-1 rounded-full bg-neon-red animate-pulse" />
                         </div>
                     </div>
                 </div>

@@ -218,5 +218,25 @@
         "type": "INTERNAL_API_TOKEN",
         "value_preview": "internal_a...",
         "created_at": "2026-04-29T09:34:50.250210"
+    },
+    "b7e78d03e4e390bb13eff718b41737a11815779958017f1e453b10ddb81f1491": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA094A8C...",
+        "created_at": "2026-04-29T09:54:47.054656"
+    },
+    "3e94d02baa5d6f35ff5477345e89928f5b6a9bde4b8a2ac1f8b7ab04fb8ca8ec": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "db11d87e9c...",
+        "created_at": "2026-04-29T09:54:47.054656"
+    },
+    "78fbeb505bc5e13a4223a0bedf08e352d7d0ef44e90b819e965b0a77dfa9c383": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T09:54:47.054656"
+    },
+    "d35767b9ac4910a9f8570220287b5b3dca0f6d666be2ee61adbc0f64a61aebc6": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T09:54:47.054656"
     }
 }
