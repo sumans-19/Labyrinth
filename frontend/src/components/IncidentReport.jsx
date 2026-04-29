@@ -1,4 +1,4 @@
-import { FileText, Download, Clock, Shield, Crosshair, AlertTriangle, CheckCircle2, Activity, BarChart3 } from 'lucide-react';
+import { FileText, Download, Clock, Shield, Crosshair, AlertTriangle, CheckCircle2, Activity, BarChart3, Fingerprint, Database } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
 
 function formatTimestamp(ts) {
@@ -185,6 +185,98 @@ export default function IncidentReport({ report }) {
                         ))}
                     </div>
                 </div>
+
+                {/* Behavioral Fingerprinting Data */}
+                {report.fingerprint && (
+                    <div className={`p-4 rounded-xl border ${report.fingerprint.is_returning ? 'border-neon-blue/30 bg-neon-blue/5' : 'border-neon-purple/30 bg-neon-purple/5'} relative overflow-hidden group`}>
+                        {/* Background Decoration */}
+                        <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-[60px] opacity-20 ${report.fingerprint.is_returning ? 'bg-neon-blue' : 'bg-neon-purple'}`} />
+                        
+                        <div className="flex items-center justify-between mb-4 relative z-10">
+                            <div className="flex items-center gap-2">
+                                <Fingerprint className={`w-4 h-4 ${report.fingerprint.is_returning ? 'text-neon-blue' : 'text-neon-purple'}`} />
+                                <span className={`font-[Orbitron] text-[10px] font-bold uppercase tracking-widest ${report.fingerprint.is_returning ? 'text-neon-blue' : 'text-neon-purple'}`}>
+                                    Behavioral Forensic Intelligence
+                                </span>
+                            </div>
+                            <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${report.fingerprint.is_returning ? 'text-neon-blue border-neon-blue/30 bg-neon-blue/10' : 'text-neon-purple border-neon-purple/30 bg-neon-purple/10'} uppercase font-bold`}>
+                                {report.fingerprint.is_returning ? "Returning Attacker" : "Novel Attack Pattern"}
+                            </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 relative z-10">
+                            <div className="space-y-1">
+                                <div className="text-[9px] text-gray-500 font-mono uppercase tracking-tighter">Profile Attribution</div>
+                                <div className="text-sm font-bold text-white font-[Orbitron] tracking-wider truncate">
+                                    {report.fingerprint.matched_profile}
+                                </div>
+                                <div className={`text-[10px] font-bold ${report.fingerprint.is_returning ? 'text-neon-blue' : 'text-neon-purple'}`}>
+                                    Confidence: {report.fingerprint.match_confidence}%
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="text-[9px] text-gray-500 font-mono uppercase tracking-tighter">Predicted Objective</div>
+                                <div className="text-sm font-bold text-neon-amber font-mono truncate leading-none">
+                                    {report.fingerprint.detected_objective}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-4 border-y border-white/5 relative z-10">
+                            <div className="text-center p-2 rounded bg-white/[0.02] sm:bg-transparent">
+                                <div className="text-xs font-bold text-white mb-0.5">{report.fingerprint.avg_time_delay_ms} ms</div>
+                                <div className="text-[8px] text-gray-500 uppercase font-mono">Avg Delay</div>
+                            </div>
+                            <div className="text-center p-2 rounded bg-white/[0.02] sm:bg-transparent">
+                                <div className="text-xs font-bold text-neon-red mb-0.5">{report.fingerprint.error_rate_percentage}%</div>
+                                <div className="text-[8px] text-gray-500 uppercase font-mono">Typo Rate</div>
+                            </div>
+                            <div className="text-center p-2 rounded bg-white/[0.02] sm:bg-transparent">
+                                <div className="text-xs font-bold text-neon-green mb-0.5">{report.fingerprint.total_commands}</div>
+                                <div className="text-[8px] text-gray-500 uppercase font-mono">Sequence Len</div>
+                            </div>
+                        </div>
+
+                        <div className="relative mt-4 group">
+                            <button
+                                onClick={async (e) => {
+                                    const btn = e.currentTarget;
+                                    btn.disabled = true;
+                                    const originalText = btn.innerHTML;
+                                    btn.innerHTML = '<span class="animate-pulse">SYNCHRONIZING WITH DB...</span>';
+                                    
+                                    try {
+                                        const resp = await fetch(`http://${window.location.hostname}:8000/api/v1/fingerprint/save`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                fingerprint: report.fingerprint,
+                                                attacker_ip: report.attacker_ip
+                                            })
+                                        });
+                                        const data = await resp.json();
+                                        if (data.status === 'success') {
+                                            btn.innerHTML = '<span class="text-neon-green flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle-2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg> PROFILE PERSISTED SUCCESSFULLY</span>';
+                                            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+                                        } else {
+                                            throw new Error("Save failed");
+                                        }
+                                    } catch (e) { 
+                                        btn.innerHTML = '<span class="text-neon-red">SYNC FAILED</span>';
+                                        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+                                    }
+                                }}
+                                className={`w-full py-3 ${report.fingerprint.is_returning ? 'bg-neon-blue/10 hover:bg-neon-blue/20 border-neon-blue/30' : 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/30'} border hover:border-white/40 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 group relative overflow-hidden`}
+                            >
+                                <Database className={`w-4 h-4 ${report.fingerprint.is_returning ? 'text-neon-blue' : 'text-neon-purple'}`} />
+                                PERSIST FINGERPRINT TO INTELLIGENCE DB
+                                
+                                {/* Hover Effect */}
+                                <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Download Button */}
                 <button

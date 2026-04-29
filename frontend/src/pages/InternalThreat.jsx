@@ -39,16 +39,6 @@ export default function InternalThreat({ onNavigate }) {
             glow: 'group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]',
             method: "Uses a co-worker's unattended laptop to access the internal network.",
             solution: 'Biometric Analysis: AI detects if the typing rhythm or command frequency deviates from the "owner\'s" profile.'
-        },
-        {
-            title: 'The Saboteur',
-            icon: Bomb,
-            color: 'text-neon-purple',
-            border: 'border-neon-purple/30',
-            bg: 'bg-neon-purple/5',
-            glow: 'group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]',
-            method: 'Injects a "Logic Bomb" or backdoor into the company\'s codebase.',
-            solution: 'Aegis Integration: Git-hook intercepts the commit, and Gemini identifies the malicious logic before merge.'
         }
     ];
 
@@ -88,7 +78,7 @@ export default function InternalThreat({ onNavigate }) {
             </div>
 
             {/* Threat Profiles Animated Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 max-w-5xl mx-auto mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-7xl mx-auto mt-12">
                 {THREAT_PROFILES.map((tp, i) => (
                     <div
                         key={i}

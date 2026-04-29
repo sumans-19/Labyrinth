@@ -335,15 +335,18 @@ def get_attack_logs():
 def create_session():
     sid = f"sess-{random.randint(10000,99999)}"
     sessions[sid] = HoneypotSession()
+    sessions[sid].session_id = sid
+    sessions[sid].broadcast_callback = broadcast_to_monitors
     ip = f"{random.randint(60,220)}.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}"
     return {"session_id": sid, "attacker_ip": ip, "prompt": sessions[sid].prompt}
 
 @app.post("/api/command")
-def run_command(req: CommandRequest):
+def run_command(req: CommandRequest, request: Request):
     session = sessions.get(req.session_id)
     if not session:
         return {"error": "Session not found"}
-    output = session.process_command(req.command)
+    ip = get_client_ip(request)
+    output = session.process_command(req.command, ip)
     return {
         "output": output,
         "prompt": session.prompt,
@@ -987,9 +990,32 @@ async def demo_ws(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        # Do NOT pop sid immediately - keep it for 30 minutes for report download
-        # In a real app, use a cleanup task.
+        # Session cleanup
         pass
+
+# ── Manual Fingerprint Persistence ────────────────
+class FingerprintSaveRequest(BaseModel):
+    fingerprint: Dict[str, Any]
+    attacker_ip: str
+
+@app.post("/api/v1/fingerprint/save")
+async def save_fingerprint(request: FingerprintSaveRequest):
+    try:
+        from ml_profiler import MLProfiler
+        profiler = MLProfiler()
+        # We use generate_new_profile to save the data
+        # Mapping the incoming fingerprint data back to what generate_new_profile expects
+        data = {
+            "raw_sequence": request.fingerprint.get("raw_sequence", ""),
+            "avg_delay": request.fingerprint.get("avg_time_delay_ms", 0.0) / 1000.0,
+            "error_rate": request.fingerprint.get("error_rate_percentage", 0.0)
+        }
+        res = profiler.generate_new_profile(data, request.attacker_ip)
+        if res:
+            return {"status": "success", "profile": res}
+        return {"status": "error", "message": "Failed to save profile"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
