@@ -2,11 +2,8 @@ import logging
 import sys
 import os
 import json
-<<<<<<< HEAD
 import traceback
-=======
 import hashlib
->>>>>>> origin/vulne
 
 # Ensure project root is in path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
