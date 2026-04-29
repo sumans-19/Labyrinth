@@ -6,13 +6,15 @@ import DevSecOps from './pages/DevSecOps';
 import InternalThreat from './pages/InternalThreat';
 import TheLeakerDashboard from './pages/TheLeakerDashboard';
 import LateralMoverPortal from './pages/LateralMoverPortal';
+import SentinelSandbox from './pages/SentinelSandbox';
 import CyberCorner from './components/CyberCorner';
-import { Shield, Swords, Code2, Home, ShieldAlert } from 'lucide-react';
+import { Shield, Swords, Code2, Home, ShieldAlert, Box } from 'lucide-react';
 
 const TABS = [
   { id: 'landing', label: 'Home', icon: Home },
   { id: 'warroom', label: 'External Threat', icon: Swords },
   { id: 'devsecops', label: 'Vulnerability Detector', icon: Code2 },
+  { id: 'sentinel', label: 'Sentinel Sandbox', icon: Box },
   { id: 'internalthreat', label: 'Internal Threat', icon: ShieldAlert },
 ];
 
@@ -71,6 +73,7 @@ export default function App() {
         {activeTab === 'landing' && <LandingPage onNavigate={setActiveTab} />}
         {activeTab === 'warroom' && <WarRoom />}
         {activeTab === 'devsecops' && <DevSecOps />}
+        {activeTab === 'sentinel' && <SentinelSandbox />}
         {activeTab === 'internalthreat' && <InternalThreat onNavigate={setActiveTab} />}
         {activeTab === 'leaker' && <TheLeakerDashboard onNavigate={setActiveTab} />}
         {activeTab === 'lateral-mover' && <LateralMoverPortal onNavigate={setActiveTab} />}

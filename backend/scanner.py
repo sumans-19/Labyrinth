@@ -45,7 +45,9 @@ def scan_code(code: str, language: str = "python") -> dict:
                 "severity": f.get("severity", "HIGH"),
                 "line": f.get("line", 0),
                 "snippet": f.get("snippet", "Context provided by AI"),
-                "description": f.get("description", "Structural flaw identified by deep analysis.")
+                "description": f.get("description", "Structural flaw identified by deep analysis."),
+                "attack_chain": f.get("attack_chain", []),
+                "mitigation": f.get("mitigation", {"summary": "Fix applied.", "patched_snippet": "", "strategy": "VALIDATE"})
             })
 
         return {
@@ -53,7 +55,7 @@ def scan_code(code: str, language: str = "python") -> dict:
             "findings": formatted_findings,
             "findings_count": len(ai_findings),
             "fixed_count": len(ai_findings) if is_secure else 0,
-            "risk_score": (100 - before_score),
+            "risk_score": (100 - before_score), # ALWAYS use before_score for initial risk
             "secure_code": secure_code if is_secure else "# SECURITY VETO: AI remediation failed structural safety enforcement.",
             "validation_status": "AI COGNITIVE AUDIT PASSED" if is_secure else "AI VETO TRIPPED",
             "report": f"AI Cognitive Audit complete. {len(ai_findings)} structural flaws identified and neutralized by shield-engine oracle. Verification: {'SUCCESS' if is_secure else 'CRITICAL FAILURE'}."

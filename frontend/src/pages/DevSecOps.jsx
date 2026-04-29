@@ -5,11 +5,179 @@ import {
     Copy, Layout, Terminal, Loader2, AlertTriangle, Cpu,
     ChevronDown, ChevronUp, Activity, BarChart3, Fingerprint,
     X, Check, Settings, Upload, Play, Download, Trash2, FileCode2,
-    Lock, AlertCircle
+    Lock, AlertCircle, User, Server, Skull, Target, Eye, Database
 } from 'lucide-react';
 
+// ── Phase config (dynamic — any phase name works) ─────────────────────────────
+const PHASE_CFG = {
+    Reconnaissance:       { ring: '#eab308', glow: '0 0 14px #eab30888', label: 'text-yellow-400' },
+    Exploitation:         { ring: '#ef4444', glow: '0 0 14px #ef444488', label: 'text-red-400'    },
+    'Privilege Escalation':{ ring: '#f97316', glow: '0 0 14px #f9731688', label: 'text-orange-400'},
+    Exfiltration:         { ring: '#a855f7', glow: '0 0 14px #a855f788', label: 'text-purple-400'},
+    Impact:               { ring: '#ec4899', glow: '0 0 14px #ec489988', label: 'text-pink-400'  },
+};
+const defaultPhase = { ring: '#6b7280', glow: '0 0 10px #6b728066', label: 'text-gray-400' };
+
+const ACTOR_ICON = { ATTACKER: User, SYSTEM: Server, RESULT: Skull };
+const ACTOR_COLOR = { ATTACKER: '#ef4444', SYSTEM: '#60a5fa', RESULT: '#ec4899' };
+
+const STRATEGY_CFG = {
+    PARAMETERIZE: { label: 'Parameterized Query', icon: Database, color: 'text-blue-400'   },
+    SANITIZE:     { label: 'Input Sanitization',  icon: Shield,   color: 'text-green-400'  },
+    VALIDATE:     { label: 'Input Validation',    icon: Check,    color: 'text-green-400'  },
+    SANDBOX:      { label: 'Path Sandboxing',     icon: Lock,     color: 'text-purple-400' },
+    AUTHENTICATE: { label: 'Auth Gate',           icon: Eye,      color: 'text-amber-400'  },
+};
+
+// ── Circular node with hover tooltip ─────────────────────────────────────────
+function ChainNode({ step, index, total, hovered, onHover }) {
+    const phase    = PHASE_CFG[step.phase] || defaultPhase;
+    const ActorIcon = ACTOR_ICON[step.actor] || User;
+    const actorColor = ACTOR_COLOR[step.actor] || '#9ca3af';
+    const isHovered = hovered === index;
+
+    // tooltip pops above on lower half of chain, below on upper half
+    const tooltipSide = index >= total / 2 ? 'bottom-[calc(100%+12px)]' : 'top-[calc(100%+12px)]';
+
+    return (
+        <div className="relative flex flex-col items-center" style={{ flex: 1, minWidth: 0 }}>
+            {/* Circle node */}
+            <button
+                onMouseEnter={() => onHover(index)}
+                onMouseLeave={() => onHover(null)}
+                onClick={() => onHover(isHovered ? null : index)}
+                className="relative w-14 h-14 rounded-full border-2 flex items-center justify-center transition-transform duration-200 focus:outline-none"
+                style={{
+                    borderColor: phase.ring,
+                    background: `${phase.ring}18`,
+                    boxShadow: isHovered ? phase.glow : 'none',
+                    transform: isHovered ? 'scale(1.15)' : 'scale(1)',
+                }}
+            >
+                <ActorIcon className="w-5 h-5" style={{ color: actorColor }} />
+                {/* Stage badge */}
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center"
+                    style={{ background: phase.ring, color: '#000' }}>
+                    {step.stage}
+                </span>
+            </button>
+
+            {/* Phase label below node */}
+            <span className={`mt-1.5 text-[8px] font-black uppercase tracking-wider text-center leading-tight ${phase.label}`}
+                style={{ maxWidth: 68 }}>
+                {step.phase}
+            </span>
+
+            {/* Hover tooltip */}
+            {isHovered && (
+                <div className={`absolute ${tooltipSide} left-1/2 -translate-x-1/2 z-50 w-64 rounded-xl border p-4 shadow-2xl animate-fade-in`}
+                    style={{ borderColor: `${phase.ring}55`, background: '#0a0d16', boxShadow: phase.glow }}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phase.ring }}>
+                            {step.phase} · Stage {step.stage}
+                        </span>
+                        <span className="text-[8px] font-bold uppercase" style={{ color: actorColor }}>
+                            {step.actor}
+                        </span>
+                    </div>
+                    {/* Action */}
+                    <p className="text-xs font-bold text-white mb-1">{step.action}</p>
+                    {/* Detail */}
+                    <p className="text-[10px] text-gray-400 leading-relaxed mb-2">{step.detail}</p>
+                    {/* Payload */}
+                    {step.payload && (
+                        <div className="bg-black/70 border border-white/[0.06] rounded-lg px-3 py-2 font-mono text-[10px] flex gap-2 items-start mb-2">
+                            <Terminal className="w-3 h-3 text-gray-600 mt-0.5 flex-shrink-0" />
+                            <code className="text-pink-400 break-all">{step.payload}</code>
+                        </div>
+                    )}
+                    {/* Impact */}
+                    {step.impact && (
+                        <div className="flex items-start gap-1.5">
+                            <Target className="w-3 h-3 text-gray-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-[10px] text-gray-500 italic">{step.impact}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Animated connector line between nodes ─────────────────────────────────────
+function Connector({ fromPhase }) {
+    const phase = PHASE_CFG[fromPhase] || defaultPhase;
+    return (
+        <div className="flex-shrink-0 flex items-center" style={{ width: 28, marginTop: '-22px' }}>
+            <div className="w-full h-px relative overflow-hidden" style={{ background: `${phase.ring}33` }}>
+                <div className="absolute inset-0 animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${phase.ring}, transparent)`, animation: 'shimmer 1.8s infinite' }} />
+            </div>
+            <div style={{ width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: `6px solid ${phase.ring}` }} />
+        </div>
+    );
+}
+
+// ── Full attack chain visual ──────────────────────────────────────────────────
+function AttackChainVisual({ chain, mitigation }) {
+    const [hovered, setHovered] = useState(null);
+    if (!chain || chain.length === 0) return null;
+
+    const mitigationObj = typeof mitigation === 'object'
+        ? mitigation
+        : { summary: String(mitigation || ''), patched_snippet: '', strategy: 'VALIDATE' };
+    const stratKey   = (mitigationObj.strategy || 'VALIDATE').split('|')[0].trim().toUpperCase();
+    const strat      = STRATEGY_CFG[stratKey] || STRATEGY_CFG['VALIDATE'];
+    const StratIcon  = strat.icon;
+
+    return (
+        <div className="mt-5 space-y-5 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center gap-3">
+                <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#ef444444,transparent)' }} />
+                <span className="text-[9px] font-black font-[Orbitron] text-red-400 tracking-[0.3em] uppercase">Attack Chain Simulation</span>
+                <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#ef444444,transparent)' }} />
+            </div>
+
+            {/* Circular nodes row */}
+            <div className="relative flex items-start justify-between px-2 py-4" style={{ minHeight: 110 }}>
+                {chain.map((step, idx) => (
+                    <>
+                        <ChainNode key={idx} step={step} index={idx} total={chain.length} hovered={hovered} onHover={setHovered} />
+                        {idx < chain.length - 1 && <Connector key={`c${idx}`} fromPhase={step.phase} />}
+                    </>
+                ))}
+            </div>
+            <p className="text-center text-[9px] text-gray-600 font-mono uppercase tracking-widest -mt-2">Hover or tap a node to reveal attack details</p>
+
+            {/* Mitigation */}
+            <div className="rounded-xl border border-green-500/25 bg-green-500/5 p-4 space-y-2.5">
+                <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-green-400" />
+                    <span className="text-[10px] font-black font-[Orbitron] text-green-400 tracking-widest uppercase">Shield Response — Mitigation Applied</span>
+                </div>
+                <div className={`flex items-center gap-2 ${strat.color}`}>
+                    <StratIcon className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest">{strat.label}</span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">{mitigationObj.summary}</p>
+                {mitigationObj.patched_snippet && (
+                    <div className="bg-black/60 border border-green-500/20 rounded-lg px-4 py-2.5 font-mono text-[11px] flex items-start gap-3">
+                        <Check className="w-3 h-3 text-green-400 mt-0.5 flex-shrink-0" />
+                        <code className="text-green-400 break-all">{mitigationObj.patched_snippet}</code>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function DevSecOps() {
     const [code, setCode] = useState('def vulnerable_function():\n    password = "hardcoded_secret"\n    cmd = input("Enter command: ")\n    import os\n    os.system(cmd)\n');
+    const [expandedFinding, setExpandedFinding] = useState(null);
+    const [copiedSource, setCopiedSource] = useState(false);
     const [language, setLanguage] = useState('python');
     const [activeTab, setActiveTab] = useState('output'); // 'output', 'vulnerabilities', 'exploit', 'fixed'
     
@@ -31,14 +199,12 @@ export default function DevSecOps() {
     const [isFixing, setIsFixing] = useState(false);
     
     const [fixedExecOutput, setFixedExecOutput] = useState(null);
-    const [copied, setCopied] = useState(false);
     
     const fileInputRef = useRef(null);
 
-    const handleCopy = (text) => {
+    const handleCopy = (text, type) => {
         navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (type === 'source') { setCopiedSource(true); setTimeout(() => setCopiedSource(false), 2000); }
     };
 
     const autoDetectLanguage = (sourceCode) => {
@@ -77,6 +243,7 @@ export default function DevSecOps() {
                 setExecOutput(data);
             }
         } catch (err) {
+            console.error("Execution error:", err);
             const errData = { output: "Connection to Sandbox Failed.", status: "error", execution_time: "0.000s" };
             if (isFixed) setFixedExecOutput(errData);
             else setExecOutput(errData);
@@ -92,6 +259,8 @@ export default function DevSecOps() {
         setIsScanning(true);
         setActiveTab('vulnerabilities');
         setScanResults(null);
+        setExpandedFinding(null);
+        
         try {
             const res = await fetch('/api/scan', {
                 method: 'POST',
@@ -222,17 +391,6 @@ export default function DevSecOps() {
         }
     };
 
-    const getIndicatorInfo = () => {
-        if (scanResults) {
-            if (scanResults.risk_score > 70) return { color: 'text-red-500', text: 'CRITICAL RISK', icon: AlertTriangle };
-            if (scanResults.risk_score > 30) return { color: 'text-amber-500', text: 'WARNING', icon: AlertCircle };
-            return { color: 'text-green-500', text: 'SAFE', icon: ShieldCheck };
-        }
-        return { color: 'text-gray-400', text: 'UNTESTED', icon: Shield };
-    };
-    const IndicatorInfo = getIndicatorInfo();
-    const IndicatorIcon = IndicatorInfo.icon;
-
     return (
         <div className="max-w-[1600px] mx-auto px-6 py-6 animate-fade-in lg:px-8 h-[calc(100vh-64px)] flex flex-col">
             {/* Header Section */}
@@ -242,26 +400,22 @@ export default function DevSecOps() {
                         <Lock className="w-8 h-8 text-neon-blue" />
                     </div>
                     <div>
-                        <h1 className="font-[Orbitron] text-2xl font-black text-white tracking-widest uppercase">
-                            AI Secure Debugger & Analyzer
-                        </h1>
-                        <p className="text-xs text-gray-500 font-mono tracking-widest uppercase mt-1">
-                            Sandboxed Execution • Vulnerability Scanning • Auto-Remediation
-                        </p>
+                        <h1 className="font-[Orbitron] text-3xl font-black text-white tracking-widest uppercase">Vulnerability Detector</h1>
+                        <p className="text-xs text-gray-500 font-mono tracking-widest uppercase mt-1">Deterministic Vulnerability Analysis &amp; Remediation</p>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                    <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">Status Indicator</span>
-                        <span className={`text-sm font-bold font-[Orbitron] tracking-widest flex items-center gap-2 ${IndicatorInfo.color}`}>
-                            {IndicatorInfo.text} <IndicatorIcon className="w-4 h-4" />
-                        </span>
+                <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-end mr-6">
+                        <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">Hardening Mode</span>
+                        <span className="text-xs font-bold text-neon-green font-[Orbitron] tracking-widest flex items-center gap-2">ACTIVE <Activity className="w-3 h-3" /></span>
                     </div>
+                    <button onClick={handleScan} disabled={isScanning || !code.trim()} className="btn-neon btn-neon-blue flex items-center gap-3">
+                        {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 fill-current" /> Initialize Scan</>}
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-6 flex-1 min-h-0 overflow-hidden">
+            <div className="grid grid-cols-12 gap-8 h-[calc(100vh-140px)] min-h-[700px]">
                 {/* ── LEFT PANEL: CODE INPUT ── */}
                 <div className="col-span-12 lg:col-span-6 flex flex-col h-full glass-card bg-[#0d111b]/80 border-white/5 relative overflow-hidden shadow-2xl">
                     <div className="px-4 py-3 border-b border-white/5 bg-black/40 flex justify-between items-center shrink-0">
@@ -290,7 +444,6 @@ export default function DevSecOps() {
                             </button>
                         </div>
                     </div>
-
                     <div className="flex-1 min-h-0 relative">
                         <Editor
                             height="100%"
@@ -308,7 +461,6 @@ export default function DevSecOps() {
                             }}
                         />
                     </div>
-                    
                     {/* Action Bar */}
                     <div className="p-4 border-t border-white/5 bg-black/60 shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <button 
@@ -333,10 +485,10 @@ export default function DevSecOps() {
                             {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 fill-current" />} FIX
                         </button>
                         <button 
-                            onClick={() => handleCopy(code)}
+                            onClick={() => handleCopy(code, 'source')}
                             className="flex items-center justify-center gap-2 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all"
                         >
-                            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} COPY
+                            {copiedSource ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} COPY
                         </button>
                     </div>
                 </div>
@@ -431,12 +583,29 @@ export default function DevSecOps() {
                                                     <p className="text-xs text-gray-400 mb-4 font-mono leading-relaxed pl-3 border-l-2 border-white/10">
                                                         {vuln.description}
                                                     </p>
-                                                    <button 
-                                                        onClick={() => handleSimulateExploit(vuln)}
-                                                        className="flex items-center gap-2 text-[10px] font-[Orbitron] uppercase tracking-widest text-neon-blue hover:text-white transition-colors bg-neon-blue/10 px-3 py-1.5 rounded border border-neon-blue/30"
-                                                    >
-                                                        <Bug className="w-3 h-3" /> Simulate Exploit
-                                                    </button>
+                                                    <div className="mt-4 border-t border-white/10 pt-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <button 
+                                                                onClick={() => setExpandedFinding(expandedFinding === vuln.id ? null : vuln.id)}
+                                                                className="flex items-center gap-2 text-[10px] font-[Orbitron] uppercase tracking-widest text-white hover:text-neon-blue transition-colors bg-white/5 px-3 py-1.5 rounded border border-white/10 hover:border-neon-blue/30"
+                                                            >
+                                                                <Bug className="w-3 h-3" /> {expandedFinding === vuln.id ? 'Hide Attack Chain' : 'Show Attack Chain'}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleSimulateExploit(vuln)}
+                                                                className="flex items-center gap-2 text-[10px] font-[Orbitron] uppercase tracking-widest text-neon-blue hover:text-white transition-colors bg-neon-blue/10 px-3 py-1.5 rounded border border-neon-blue/30"
+                                                            >
+                                                                <Terminal className="w-3 h-3" /> Simulate Exploit
+                                                            </button>
+                                                        </div>
+
+                                                        {/* ── Attack Chain Visual (expanded) ── */}
+                                                        {expandedFinding === vuln.id && (
+                                                            <div className="mt-4">
+                                                                <AttackChainVisual chain={vuln.attack_chain} mitigation={vuln.mitigation} />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                             {scanResults.findings.length === 0 && (

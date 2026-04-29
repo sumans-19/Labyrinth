@@ -34,6 +34,7 @@ from ml_engine import ml_router
 from middleware import GlobalMonitoringMiddleware
 from honeytoken_manager import HoneytokenManager
 import database
+from sentinel import router as sentinel_router
 
 
 import google.generativeai as genai
@@ -93,6 +94,9 @@ app.add_middleware(
 app.include_router(lateral_router)
 # Include ML Engine Router
 app.include_router(ml_router)
+
+# Include Sentinel Sandbox Router
+app.include_router(sentinel_router)
 
 def get_client_ip(request: Request):
     """Robust client IP detection for proxies like Ngrok."""

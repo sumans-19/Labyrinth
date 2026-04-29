@@ -22,6 +22,7 @@ STRICT SECURITY DIRECTIVES (MANDATORY):
 - SYNTAX: ENSURE VALID AND IDIOMATIC {language.upper()} SYNTAX.
 
 OUTPUT FORMAT:
+You MUST return a JSON object with this EXACT structure:
 You MUST return a JSON object. If the code is perfectly secure with zero vulnerabilities, return an empty array for "findings": "findings": []. Otherwise:
 {{
   "findings": [
@@ -29,12 +30,47 @@ You MUST return a JSON object. If the code is perfectly secure with zero vulnera
       "type": "Vulnerability Name",
       "severity": "CRITICAL/HIGH/MEDIUM",
       "line": 12,
-      "description": "Deep reasoning on the vulnerability",
-      "snippet": "Vulnerable code snippet"
+      "description": "Deep technical reasoning on why this is dangerous",
+      "snippet": "The exact vulnerable line of code from the source",
+      "attack_chain": [
+        {{
+          "stage": 1,
+          "phase": "Reconnaissance",
+          "actor": "ATTACKER",
+          "action": "Short action title (max 8 words)",
+          "detail": "What the attacker does or observes at this step (1-2 sentences)",
+          "payload": "actual_payload_or_input_used_here",
+          "impact": "What breaks or gets exposed as a result"
+        }},
+        {{
+          "stage": 2,
+          "phase": "Exploitation",
+          "actor": "SYSTEM",
+          "action": "Server processes malicious input",
+          "detail": "The vulnerable code path that gets triggered, referencing the snippet",
+          "payload": "the SQL/command/path that executes",
+          "impact": "Data leaked, command executed, or access gained"
+        }},
+        {{
+          "stage": 3,
+          "phase": "Impact",
+          "actor": "RESULT",
+          "action": "Full breach achieved",
+          "detail": "The final consequence — what the attacker now controls or has stolen",
+          "payload": null,
+          "impact": "Severity of damage in plain terms"
+        }}
+      ],
+      "mitigation": {{
+        "summary": "One-line explanation of the fix",
+        "patched_snippet": "The exact fixed replacement line from secure_code",
+        "strategy": "PARAMETERIZE | SANITIZE | VALIDATE | SANDBOX | AUTHENTICATE"
+      }}
     }}
   ],
   "secure_code": "The full hardened {language} source code"
 }}
+IMPORTANT: attack_chain must always have 3-4 stages. phase must be one of: Reconnaissance, Exploitation, Privilege Escalation, Impact, Exfiltration. actor must be one of: ATTACKER, SYSTEM, RESULT.
 """
 
 def remediate_code(source_code, language="python"):
