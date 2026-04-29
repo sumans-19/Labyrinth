@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from typing import Optional, Callable
 import time
+from datetime import datetime
 from honeytoken_manager import HoneytokenManager
 
 router = APIRouter(prefix="/api/v1/internal", tags=["Lateral Movement Defense"])

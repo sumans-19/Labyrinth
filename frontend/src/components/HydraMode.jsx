@@ -3,7 +3,6 @@ import { Monitor, Server, Cpu } from 'lucide-react';
 const MODES = [
     { id: 'ubuntu', label: 'Ubuntu', icon: Monitor, color: 'neon-green' },
     { id: 'windows', label: 'Windows', icon: Server, color: 'neon-blue' },
-    { id: 'iot', label: 'IoT', icon: Cpu, color: 'neon-purple' },
 ];
 
 export default function HydraMode({ mode, onModeChange }) {

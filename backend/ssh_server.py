@@ -61,6 +61,8 @@ def handle_ssh_connection(client_socket, addr, broadcast_callback):
         transport.set_keepalive(30)
 
         honeypot_session = HoneypotSession()
+        honeypot_session.broadcast_callback = broadcast_callback
+        honeypot_session.session_id = f"ssh-{int(time.time())}"
         server = SSHHoneypotServer()
         server.client_ip = addr[0]
 
@@ -133,7 +135,7 @@ def handle_ssh_connection(client_socket, addr, broadcast_callback):
                 break
 
             # Process command
-            output = honeypot_session.process_command(cmd)
+            output = honeypot_session.process_command(cmd, addr[0])
             chan.send(output.replace("\n", "\r\n") + "\r\n")
 
             # Mirror to dashboard

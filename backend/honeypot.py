@@ -9,14 +9,84 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.lib.units import mm
 import io
+import logging
 from datetime import datetime
+from typing import List, Dict, Any, Optional, Tuple, Union
+from behavior_extractor import BehaviorExtractor
+from ml_profiler import MLProfiler
+from tarpit_controller import TarpitController
 
 # Ensure project root is in path for shield_engine
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ── Groq AI Configuration (Honeypot Emulation) ─────────
-from shield_engine.llm.groq_client import GroqClient
-shield_ai = GroqClient(model="llama-3.3-70b-versatile")
+# ── AI Configuration (Honeypot Emulation) ─────────
+import google.generativeai as genai
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+class UnifiedAI:
+    def __init__(self):
+        self.gemini_model = None
+        self.groq_key = GROQ_API_KEY
+        
+        if GEMINI_API_KEY:
+            try:
+                genai.configure(api_key=GEMINI_API_KEY)
+                # Check if the key is valid by attempting a light model init
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+                print("[*] UnifiedAI: Gemini Backend Initialized")
+            except Exception as e:
+                print(f"[!] UnifiedAI: Gemini Init Failed (Check API Key Scopes): {e}")
+                self.gemini_model = None
+                
+        if not self.gemini_model and self.groq_key:
+            print("[*] UnifiedAI: Falling back to Groq Backend")
+
+    def generate_content(self, prompt: str) -> Any:
+        # Try Gemini first
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                if response and response.text:
+                    return type('obj', (object,), {'text': response.text})
+            except Exception as e:
+                if "403" in str(e):
+                    print("[!] UnifiedAI: Gemini 403 Error (Permission Denied). Disabling Gemini.")
+                    self.gemini_model = None
+                else:
+                    print(f"[!] UnifiedAI: Gemini Generation Failed: {e}")
+
+        # Fallback to Groq
+        if self.groq_key:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self.groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
+                }
+                resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    text = resp.json()['choices'][0]['message']['content']
+                    return type('obj', (object,), {'text': text})
+                elif resp.status_code == 429:
+                    print("[!] UnifiedAI: Groq Rate Limit Reached. Falling back to static.")
+                else:
+                    print(f"[!] UnifiedAI: Groq API Error: {resp.status_code} - {resp.text}")
+            except Exception as e:
+                print(f"[!] UnifiedAI: Groq Generation Failed: {e}")
+
+        return None
+
+shield_ai = UnifiedAI()
 
 
 # ── MITRE ATT&CK Kill Chain Mapping ──────────────────
@@ -115,13 +185,15 @@ PHASE_TRANSITIONS = {
 
 def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
     """
-    Generate a realistic terminal response.
-    Uses local Ollama (Llama-3.1) for high-speed, zero-quota emulation.
+    Generate a realistic terminal response using Gemini.
     """
+    if not shield_ai:
+        return None
+
     cmd_base = command.strip().split()[0] if command.strip() else ""
     
     # 1. Deterministic Rule Book (High Speed)
-    # These commands have clean, hardcoded outputs — bypass AI to avoid wrapping/formatting issues
+    # These commands have clean, hardcoded outputs — bypass AI for core commands
     if cmd_base in ["ls", "dir", "cd", "pwd", "whoami", "id", "chmod", "cat", "stat",
                      "history", "ps", "uname", "hostname", "ifconfig", "ip", "nano",
                      "gedit", "chown", "lscpu", "apt", "clear", ""]:
@@ -130,20 +202,19 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
     if cmd_base == "netstat" or cmd_base == "ss":
         return "Active Internet connections (only servers)\nProto Recv-Q Send-Q Local Address           Foreign Address         State      \ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN     "
 
-    # 2. Local AI Generation
+    # 2. Gemini AI Generation
     try:
         os_desc = "Ubuntu 20.04" if mode == "ubuntu" else "Windows Server"
-        # Enhanced prompt for more realistic context handling
         system_context = f"You are a realistic {os_desc} terminal."
         if command.strip().startswith("sudo"):
             system_context += " The user is running this with SUDO privileges. Act as root."
         
-        prompt = f"SYSTEM: {system_context} CWD: {cwd}. Respond with ONLY the terminal output to: {command}"
-        response = shield_ai.generate(prompt)
-        if response:
-            return response.replace("```", "").strip()
+        prompt = f"SYSTEM: {system_context} CWD: {cwd}. Respond with ONLY the raw terminal output (no markdown, no explanations) to: {command}"
+        response = shield_ai.generate_content(prompt)
+        if response and response.text:
+            return response.text.replace("```", "").strip()
     except Exception as e:
-        logging.error(f"AI Generation Error: {e}")
+        logging.error(f"Gemini Generation Error: {e}")
         pass # Silent fallback
 
     return None
@@ -151,6 +222,9 @@ def _ask_ai(command: str, mode: str, cwd: str) -> str | None:
 
 def _generate_dynamic_content(path: str, mode: str) -> str:
     """Generate realistic file content using AI when a file doesn't exist."""
+    if not shield_ai:
+        return f"[Encrypted or binary data for {path.split('/')[-1]}]"
+        
     filename = path.split("/")[-1] if mode != "windows" else path.split("\\")[-1]
     prompt = (
         f"Generate realistic content for a file named '{filename}' located at '{path}' "
@@ -158,28 +232,31 @@ def _generate_dynamic_content(path: str, mode: str) -> str:
         "Include realistic data, comments, and structure. Return ONLY the file content, no explanations or markdown blocks."
     )
     try:
-        content = shield_ai.generate(prompt)
-        if content:
-            return content.replace("```", "").strip()
-    except:
-        pass
+        response = shield_ai.generate_content(prompt)
+        if response and response.text:
+            return response.text.replace("```", "").strip()
+    except Exception as e:
+        logging.error(f"Dynamic Content Error: {e}")
     return f"[Encrypted or binary data for {filename}]"
 
 
 def _generate_dynamic_ls(path: str, mode: str) -> list[str]:
     """Generate realistic filenames for a directory that doesn't exist in preloaded data."""
+    if not shield_ai:
+        return ["log", "config", "tmp", "backup"]
+        
     prompt = (
         f"Return a list of 5-10 realistic filenames (including some directories) that would exist in '{path}' "
         f"on an {mode} system. Return ONLY the names separated by spaces, no explanations."
     )
     try:
-        content = shield_ai.generate(prompt)
-        if content:
+        response = shield_ai.generate_content(prompt)
+        if response and response.text:
             # Clean up the output to get just names
-            names = content.replace("```", "").replace("\n", " ").split()
+            names = response.text.replace("```", "").replace("\n", " ").split()
             return [n.strip(",").strip() for n in names if n]
-    except:
-        pass
+    except Exception as e:
+        logging.error(f"Dynamic LS Error: {e}")
     return ["log", "config", "tmp", "backup"]
 
 # ── Fake filesystem ──────────────────────────────────
@@ -354,6 +431,14 @@ class HoneypotSession:
         self.dave_triggered = False
         self.isolated = False
         self.reverse_hack_intel = self._generate_reverse_hack_intel()
+        
+        # ── ML Fingerprinting Components ──
+        self.extractor = BehaviorExtractor()
+        self.profiler = MLProfiler()
+        self.tarpit = TarpitController()
+        self.session_id = f"ssh-{int(time.time())}"
+        self.broadcast_callback = None
+        self.attacker_ip = "Unknown"
 
     def _generate_reverse_hack_intel(self) -> dict:
         """Simulate extracting data from the attacker's machine."""
@@ -386,11 +471,63 @@ class HoneypotSession:
             return f"iot-device:{self.cwd}# "
         return f"sysadmin@acme-prod:{self.cwd}$ "
 
-    def process_command(self, cmd: str) -> str:
+    def process_command(self, cmd: str, ip: str = None) -> str:
         """Process a shell command and return mock output."""
+        if ip: self.attacker_ip = ip
         self.commands_run += 1
         cmd = cmd.strip()
         self.history.append({"cmd": cmd, "time": time.time(), "cwd": self.cwd})
+        
+        # ── ML Behavioral Fingerprinting Logic ──
+        try:
+            # 1. Extract features from current session history
+            cmds = [h["cmd"] for h in self.history]
+            times = [h["time"] for h in self.history]
+            features = self.extractor.extract_features(cmds, times)
+            
+            # 2. Check similarity against database
+            is_returning, match_data, confidence = self.profiler.check_similarity(features, self.attacker_ip)
+            
+            # Prepare rich broadcast data
+            broadcast_data = {
+                "profile_id": match_data['profile_id'] if is_returning else "New Attacker",
+                "target_objective": match_data['objective'] if is_returning else "Analyzing...",
+                "confidence_score": round(confidence, 4),
+                "attacker_ip": self.attacker_ip,
+                "raw_command_sequence": features["raw_sequence"],
+                "avg_time_delay_ms": round(features["avg_delay"] * 1000, 2),
+                "error_rate_percentage": round(features["error_rate"], 2),
+                "total_commands_executed": len(self.history),
+                "timestamp": datetime.now().isoformat(),
+                "session_id": self.session_id
+            }
+
+            if is_returning and not self.tarpit.is_active:
+                # 3. Trigger Tarpit if not already active
+                self.tarpit.activate_tarpit(match_data['profile_id'], confidence)
+                broadcast_data["status"] = "Tarpit Activated"
+                
+                # 4. Notify Dashboard via broadcast
+                if self.broadcast_callback:
+                    self.broadcast_callback({"type": "TARPIT_TRIGGERED", "data": broadcast_data})
+                    
+            elif not is_returning and len(self.history) >= 4:
+                # 5. Potential New Threat - Auto-Generate Profile
+                new_profile = self.profiler.generate_new_profile(features, self.attacker_ip)
+                if new_profile and self.broadcast_callback:
+                    broadcast_data.update({
+                        "profile_id": new_profile['profile_id'],
+                        "target_objective": new_profile['objective'],
+                        "status": "New Profile Discovered"
+                    })
+                    self.broadcast_callback({"type": "NEW_ATTACKER_PROFILED", "data": broadcast_data})
+        except Exception as e:
+            print(f"[!] ML Fingerprinting Error: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # 5. Apply Latency (Slow down the attacker)
+        self.tarpit.apply_latency()
 
         # Frustration bumps for suspicious commands
         sus = ["cat /etc/shadow", "sudo", "chmod", "wget", "curl", "nc ", "nmap", "hydra"]
@@ -430,7 +567,8 @@ class HoneypotSession:
                     # AI Check: Is this a realistic directory?
                     prompt = f"In an {self.mode} system, is '{self.cwd}' a realistic directory path? Reply with ONLY 'YES' or 'NO'."
                     try:
-                        res = shield_ai.generate(prompt)
+                        res_obj = shield_ai.generate_content(prompt)
+                        res = res_obj.text if res_obj else "NO"
                         if "YES" in res.upper():
                             # Discover it!
                             self.fs[self.cwd] = _generate_dynamic_ls(self.cwd, self.mode)
@@ -774,7 +912,54 @@ Domain:                    acme.local"""
         }
 
     def predict_next_move(self) -> dict:
-        """Predict attacker's next likely actions using Markov transitions + heuristics."""
+        """Predict attacker's next likely actions using Gemini AI analysis of session history."""
+        # Fallback to static logic if AI is unavailable
+        if not shield_ai:
+            return self._predict_next_move_static()
+
+        try:
+            history_str = "\n".join([f"> {h['cmd']}" for h in self.history[-15:]])
+            prompt = f"""
+            Analyze the following attacker command history in a {self.mode} honeypot:
+            {history_str}
+            
+            Current Working Directory: {self.cwd}
+            
+            Based on these commands, predict the attacker's current phase and next 3 likely steps.
+            Phases must be one of: Reconnaissance, Initial Access, Execution, Persistence, Privilege Escalation, Credential Access, Collection & Exfiltration.
+            
+            Return ONLY a JSON object:
+            {{
+                "current_phase": "phase_id (e.g. priv_esc)",
+                "current_phase_name": "Human Readable Phase Name",
+                "predictions": [
+                    {{
+                        "phase": "phase_id",
+                        "phase_name": "Phase Name",
+                        "confidence": int(0-100),
+                        "risk_level": "LOW|MEDIUM|HIGH|CRITICAL",
+                        "description": "Short description of what they will likely do next",
+                        "countermeasure": "One sentence defensive recommendation"
+                    }},
+                    ... (total 3)
+                ]
+            }}
+            """
+            response = shield_ai.generate_content(prompt)
+            if response and response.text:
+                import json
+                # Clean up markdown if AI includes it
+                clean_text = response.text.replace("```json", "").replace("```", "").strip()
+                data = json.loads(clean_text)
+                data["commands_analyzed"] = len(self.history)
+                return data
+        except Exception as e:
+            logging.error(f"AI Prediction Error: {e}")
+            
+        return self._predict_next_move_static()
+
+    def _predict_next_move_static(self) -> dict:
+        """Fallback static prediction logic."""
         # Determine the current phase from recent commands
         current_phase = "recon"  # default
         for entry in reversed(self.history[-5:]):
@@ -802,35 +987,23 @@ Domain:                    acme.local"""
             "collection": "CRITICAL",
         }
 
-        # Boost probabilities based on command patterns seen so far
+        # Build predictions
         predictions = []
         for next_phase, base_prob, description in transitions:
-            # Adjust probability: if attacker hasn't explored this phase, increase likelihood
-            intel = self.get_attack_intel()
-            explored = intel["active_phases"]
-            adj = base_prob
-            if next_phase not in explored:
-                adj = min(0.95, base_prob * 1.2)  # Slight boost for unexplored phases
-            elif next_phase in explored and next_phase == "collection":
-                adj = min(0.95, base_prob * 1.3)  # Collection often repeats
-
             predictions.append({
                 "phase": next_phase,
                 "phase_name": phase_names.get(next_phase, next_phase),
-                "confidence": round(adj * 100),
+                "confidence": round(base_prob * 100),
                 "risk_level": risk_map.get(next_phase, "MEDIUM"),
                 "description": description,
                 "countermeasure": self._get_countermeasure(next_phase),
             })
 
-        # Sort by confidence desc and take top 3
         predictions.sort(key=lambda x: x["confidence"], reverse=True)
-        predictions = predictions[:3]
-
         return {
             "current_phase": current_phase,
             "current_phase_name": phase_names.get(current_phase, current_phase),
-            "predictions": predictions,
+            "predictions": predictions[:3],
             "commands_analyzed": len(self.history),
         }
 
@@ -848,11 +1021,28 @@ Domain:                    acme.local"""
         return countermeasures.get(phase, "Monitor and log all activity")
 
     def generate_report(self, attacker_ip: str = "Unknown") -> dict:
-        """Generate a comprehensive incident report."""
+        """Generate a comprehensive incident report with ML fingerprinting details."""
         intel = self.get_attack_intel()
         profile = self.get_profile()
         prediction = self.predict_next_move()
         duration = round(time.time() - self.start_time, 1)
+
+        # ── ML Fingerprinting Analysis ──
+        cmds = [h["cmd"] for h in self.history]
+        times = [h["time"] for h in self.history]
+        features = self.extractor.extract_features(cmds, times)
+        is_returning, match_data, confidence = self.profiler.check_similarity(features, attacker_ip)
+        
+        fingerprint_data = {
+            "is_returning": is_returning,
+            "match_confidence": round(confidence * 100, 2),
+            "matched_profile": match_data["profile_id"] if is_returning else "New Attacker Pattern",
+            "detected_objective": match_data["objective"] if is_returning else "Analyzing...",
+            "avg_time_delay_ms": round(features["avg_delay"] * 1000, 2),
+            "error_rate_percentage": round(features["error_rate"], 2),
+            "total_commands": len(self.history),
+            "raw_sequence": features["raw_sequence"]
+        }
 
         # Build timeline
         timeline = []
@@ -900,6 +1090,7 @@ Domain:                    acme.local"""
                 "honey_tokens_accessed": tokens_accessed,
                 "data_exfiltrated": "0 bytes (all decoy)",
             },
+            "fingerprint": fingerprint_data,
             "timeline": timeline,
             "recommendations": [
                 "Rotate all credentials that were exposed in honeypot decoys",

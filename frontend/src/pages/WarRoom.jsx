@@ -223,10 +223,10 @@ export default function WarRoom() {
     }, [startLiveMonitor]);
 
     return (
-        <div className="relative max-w-[1600px] mx-auto px-4 py-6">
+        <div className="container-responsive py-6">
             <MatrixRain />
             {/* ── Header ── */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${demoActive ? 'bg-neon-red animate-pulse' : isolated ? 'bg-neon-green' : 'bg-gray-600'}`} />
                     <h1 className="font-[Orbitron] text-2xl font-bold text-white text-glow-blue relative">
@@ -241,11 +241,11 @@ export default function WarRoom() {
                     )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                     <HydraMode mode={hydraMode} onModeChange={setHydraMode} />
 
                     <button
-                        className={`btn-neon ${liveActive ? 'btn-neon-blue active' : 'btn-neon-blue'} flex items-center gap-2`}
+                        className={`btn-neon ${liveActive ? 'btn-neon-blue active' : 'btn-neon-blue'} flex items-center justify-center gap-2 w-full sm:w-auto`}
                         onClick={startLiveMonitor}
                         disabled={liveActive}
                     >
@@ -254,7 +254,7 @@ export default function WarRoom() {
                     </button>
 
                     <button
-                        className={`btn-neon ${demoActive ? 'btn-neon-red' : 'btn-neon-green'} flex items-center gap-2`}
+                        className={`btn-neon ${demoActive ? 'btn-neon-red' : 'btn-neon-green'} flex items-center justify-center gap-2 w-full sm:w-auto`}
                         onClick={startDemo}
                         disabled={demoActive}
                     >

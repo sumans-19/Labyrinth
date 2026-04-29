@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Download, Target, ChevronLeft, ShieldAlert, FileText, Server, HardDrive, Key, Copy, Check, Database, MapPin, ArrowRight, Globe, AlertTriangle, Smartphone, Laptop, RefreshCw } from 'lucide-react';
+import { Download, Target, ChevronLeft, ShieldAlert, FileText, Server, HardDrive, Key, Copy, Check, Database, MapPin, ArrowRight, Globe, AlertTriangle, Smartphone, Laptop, RefreshCw, Fingerprint } from 'lucide-react';
 
 export default function TheLeakerDashboard({ onNavigate }) {
     const [internalThreats, setInternalThreats] = useState([]);
@@ -9,6 +9,7 @@ export default function TheLeakerDashboard({ onNavigate }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [customFilename, setCustomFilename] = useState("Confidential_Alpha.html");
     const [customBaseUrl, setCustomBaseUrl] = useState("https://jene-plinthless-darius.ngrok-free.dev");
+    const [tarpitAlerts, setTarpitAlerts] = useState([]);
     const wsRef = useRef(null);
 
     // Fetch Decoys list from the backend
@@ -41,6 +42,10 @@ export default function TheLeakerDashboard({ onNavigate }) {
                     setInternalThreats(prev => [msg, ...prev]);
                 } else if (msg.type === 'FILE_MOVEMENT_DETECTED') {
                     setMovementHistory(prev => ({ ...prev, [msg.file_id]: msg }));
+                } else if (msg.type === 'TARPIT_TRIGGERED') {
+                    setTarpitAlerts(prev => [msg.data, ...prev]);
+                } else if (msg.type === 'NEW_ATTACKER_PROFILED') {
+                    setTarpitAlerts(prev => [{ ...msg.data, status: "New Profile Discovered" }, ...prev]);
                 }
             } catch (e) {
                 console.error("Failed to parse WS message", e);
@@ -144,13 +149,68 @@ export default function TheLeakerDashboard({ onNavigate }) {
                         </h2>
                         
                         <button 
-                            onClick={() => { setInternalThreats([]); setMovementHistory({}); }}
+                            onClick={() => { setInternalThreats([]); setMovementHistory({}); setTarpitAlerts([]); }}
                             className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-widest uppercase text-gray-400 hover:text-white border border-white/10 hover:border-white/30 rounded bg-white/5 hover:bg-white/10 transition-colors"
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
                             Clear Feed
                         </button>
                     </div>
+
+                    {/* ML Fingerprinting Alerts (Tarpit) */}
+                    {tarpitAlerts.length > 0 && (
+                        <div className="space-y-4 animate-fade-in">
+                            {tarpitAlerts.map((alert, i) => (
+                                <div key={i} className="glass-card border-2 border-neon-blue bg-neon-blue/10 p-6 relative overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                                        <Fingerprint className="w-24 h-24 text-neon-blue" />
+                                    </div>
+                                    <div className="flex items-start gap-5 relative z-10">
+                                        <div className={`p-4 ${alert.status === "New Profile Discovered" ? 'bg-neon-purple/20 border-neon-purple' : 'bg-neon-blue/20 border-neon-blue'} rounded-full border animate-pulse`}>
+                                            <ShieldAlert className={`w-8 h-8 ${alert.status === "New Profile Discovered" ? 'text-neon-purple' : 'text-neon-blue'}`} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className={`font-[Orbitron] font-black text-xl text-white tracking-widest uppercase ${alert.status === "New Profile Discovered" ? 'text-glow-purple' : 'text-glow-blue'}`}>
+                                                    {alert.status === "New Profile Discovered" ? "NEW ATTACKER PROFILED" : "RETURNING ATTACKER FINGERPRINTED"}
+                                                </h3>
+                                                <span className={`text-[10px] font-mono ${alert.status === "New Profile Discovered" ? 'text-neon-purple bg-neon-purple/20 border-neon-purple/30' : 'text-neon-blue bg-neon-blue/20 border-neon-blue/30'} px-2 py-1 rounded border uppercase font-bold`}>
+                                                    {alert.status || "TARPIT ACTIVATED"}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                <p className="text-sm text-gray-300 font-mono border-l-2 border-neon-blue/40 pl-4 leading-relaxed">
+                                                    Profile: <span className="text-neon-blue font-bold">{alert.profile_id}</span> <br/>
+                                                    Objective: <span className="text-neon-amber font-bold">{alert.target_objective || "Analyzing..."}</span> <br/>
+                                                    IP Address: <span className="text-white font-mono">{alert.attacker_ip}</span> <br/>
+                                                    Confidence: <span className="text-neon-blue font-bold">{(alert.confidence_score * 100).toFixed(2)}%</span>
+                                                </p>
+                                                <p className="text-sm text-gray-300 font-mono border-l-2 border-neon-purple/40 pl-4 leading-relaxed">
+                                                    Avg Delay: <span className="text-neon-purple font-bold">{alert.avg_time_delay_ms} ms</span> <br/>
+                                                    Error Rate: <span className="text-neon-red font-bold">{alert.error_rate_percentage}%</span> <br/>
+                                                    Commands: <span className="text-white font-bold">{alert.total_commands_executed}</span> <br/>
+                                                    Status: <span className="text-neon-green font-bold">Monitored</span>
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-black/40 p-3 rounded border border-white/5 mb-4">
+                                                <div className="text-[10px] text-gray-500 font-mono uppercase mb-1">Raw Command Sequence</div>
+                                                <div className="text-[11px] text-neon-blue font-mono truncate" title={alert.raw_command_sequence}>
+                                                    {alert.raw_command_sequence}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Session: {alert.session_id}</div>
+                                                <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Time: {new Date(alert.timestamp).toLocaleTimeString()}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Exfiltration Trace Map */}
                     {Object.keys(movementHistory).length > 0 && (
