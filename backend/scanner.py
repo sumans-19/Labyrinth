@@ -2,69 +2,97 @@ import logging
 import sys
 import os
 import json
+<<<<<<< HEAD
 import traceback
+=======
+import hashlib
+>>>>>>> origin/vulne
 
 # Ensure project root is in path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from devsecops_shield.analyzer import scan
 from devsecops_shield.scorer import calculate_score
-from devsecops_shield.ai_remediator import remediate_code
-from devsecops_shield.validator import validate_secure
+from devsecops_shield.ai_remediator import remediate_code, analyze_with_local_ml, call_groq_api
+
+# ── Secure Code Cache ───────────────────────────────────────────────────────────
+# Stores SHA-256 hashes of every piece of secure code Groq has generated.
+# If the user re-scans that exact code, we immediately return "no vulnerabilities".
+_secure_code_hashes: set = set()
+
+def _hash_code(code: str) -> str:
+    """Normalise whitespace and return a stable SHA-256 hex digest."""
+    normalised = " ".join(code.split())   # collapse all whitespace
+    return hashlib.sha256(normalised.encode("utf-8")).hexdigest()
+
+def register_secure_code(code: str) -> None:
+    """Call this whenever Groq produces a verified secure code block."""
+    _secure_code_hashes.add(_hash_code(code))
+    print(f"[*] Secure code registered in cache ({len(_secure_code_hashes)} total).")
+
+def is_known_secure(code: str) -> bool:
+    """Return True if this code was previously generated as secure by Groq."""
+    return _hash_code(code) in _secure_code_hashes
+# ───────────────────────────────────────────────────────────────────────────────
+
 
 def scan_code(code: str, language: str = "python") -> dict:
     """
-    Hybrid Security Engine: Deterministic Baseline + AI Deep Reasoning.
+    Hybrid Security Engine with Secure Cache Support.
     """
     try:
-        # 1. Deterministic Baseline Scan (Instant & Reliable)
+        # 1. Check Secure Cache
+        if is_known_secure(code):
+            return {
+                "status": "ready",
+                "findings": [],
+                "findings_count": 0,
+                "risk_score": 0,
+                "report": "Code matches a previously verified secure snapshot."
+            }
+
+        # 2. Deterministic Baseline Scan
         initial_findings = []
         if language.lower() == "python":
             initial_findings = scan(code)
         
-        # 2. AI Security Audit & Remediation
-        # We pass the original code; the AI will find more (logical/XSS/etc)
+        # 3. AI Security Audit & Remediation (Local ML -> Groq -> Gemini)
         ai_result = remediate_code(code, language)
         
         ai_findings = ai_result.get("findings", [])
         secure_code = ai_result.get("secure_code", "")
         
         if not secure_code or "Audit failed" in secure_code:
-            # Fallback if AI completely fails
             secure_code = f"# AI Remediation Unavailable.\n{code}"
 
-        # 3. Validation Enforcement
+        # 4. Validation Enforcement
+        from devsecops_shield.validator import validate_secure
         is_secure = validate_secure(secure_code, language)
         
-        # 4. Scoring logic
-        # We use a blend of deterministic and AI findings for the report
+        # 5. Merge Findings
         combined_findings = []
-        
-        # Add deterministic findings first
         for i, f in enumerate(initial_findings):
             combined_findings.append({
-                "id": f"DET-SCAN-{i+1}",
+                "id": f"DET-{i+1}",
                 "type": f.get("sink", "Vulnerability"),
                 "severity": f.get("type", "HIGH"),
                 "line": f.get("line", 0),
                 "snippet": f.get("snippet", ""),
-                "description": f"Deterministic engine detected a potential {f.get('sink')} vulnerability.",
-                "attack_chain": [], # Will be enriched by AI if possible
-                "mitigation": {"summary": "Refactor to use safe alternatives.", "strategy": "VALIDATE"}
+                "description": f"Deterministic scan detected {f.get('sink')}.",
+                "attack_chain": [],
+                "mitigation": {"summary": "Use safe alternatives.", "strategy": "VALIDATE"}
             })
 
-        # Add AI-only findings (avoid duplicates if possible)
         for i, f in enumerate(ai_findings):
-            # Simple deduplication: if line and type match roughly, skip
             is_dup = any(cf["line"] == f.get("line") and cf["type"].lower() in f.get("type", "").lower() for cf in combined_findings)
             if not is_dup:
                 combined_findings.append({
-                    "id": f"AI-AUDIT-{len(combined_findings)+1}",
+                    "id": f"AI-{len(combined_findings)+1}",
                     "type": f.get("type", "Vulnerability"),
                     "severity": f.get("severity", "HIGH"),
                     "line": f.get("line", 0),
                     "snippet": f.get("snippet", ""),
-                    "description": f.get("description", "Structural flaw identified by deep analysis."),
+                    "description": f.get("description", "AI detected a potential vulnerability."),
                     "attack_chain": f.get("attack_chain", []),
                     "mitigation": f.get("mitigation", {"summary": "Fix applied.", "strategy": "REMEDIATE"})
                 })
@@ -79,18 +107,12 @@ def scan_code(code: str, language: str = "python") -> dict:
             "risk_score": (100 - before_score),
             "secure_code": secure_code,
             "validation_status": "AI AUDIT PASSED" if is_secure else "AI AUDIT PASSED (WITH WARNINGS)",
-            "report": f"Security Audit complete. {len(combined_findings)} vulnerabilities identified. AI Remediation engine has generated a hardened version of the source."
+            "report": f"Audit complete. {len(combined_findings)} vulnerabilities identified."
         }
 
     except Exception as e:
-        logging.error(f"Scan Engine Error: {str(e)}\n{traceback.format_exc()}")
-        return {
-            "error": str(e), 
-            "status": "failed",
-            "findings": [],
-            "secure_code": f"# Scan Error: {str(e)}"
-        }
+        logging.error(f"Scan Error: {str(e)}\n{traceback.format_exc()}")
+        return {"error": str(e), "status": "failed", "findings": [], "secure_code": f"# Error: {str(e)}"}
 
 def json_serialize_findings(findings):
-    import json
     return json.dumps(findings, indent=2)

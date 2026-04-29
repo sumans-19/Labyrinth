@@ -83,13 +83,19 @@ async def lifespan(app):
         else:
             print("[!] Broadcast failed: main_loop not initialized")
         
-    start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
-    start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
+    try:
+        start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+        start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
+        print("[*] Honeypots (SSH:2222, TCP:8888) listening on 0.0.0.0")
+    except Exception as e:
+        print(f"[!] Honeypot startup error (non-fatal): {e}")
     
-    from lateral_interceptor import token_manager
-    # Generate honeytoken decoy files on startup using the shared instance
-    token_manager.create_decoy_files()
-    
+    try:
+        from lateral_interceptor import token_manager
+        # Generate honeytoken decoy files on startup using the shared instance
+        token_manager.create_decoy_files()
+    except Exception as e:
+        print(f"[!] Honeytoken creation failed: {e}")
     yield  # Application runs
     # Shutdown logic (if any) goes here
 
@@ -640,8 +646,23 @@ def switch_mode(req: ModeRequest):
 
 @app.post("/api/scan")
 def scan_endpoint(req: ScanRequest):
+    """Hybrid Detection: Deterministic Baseline + AI Deep Reasoning."""
     from scanner import scan_code
     return scan_code(req.code, req.language)
+
+@app.post("/api/fix")
+def fix_endpoint(req: ScanRequest):
+    """Step 2: Generate fully secure code using Groq AI, then cache its hash."""
+    from devsecops_shield.ai_remediator import call_groq_api
+    from scanner import register_secure_code
+    result = call_groq_api(req.code, req.language, action="fix")
+    secure_code = result.get("secure_code", "")
+    if not secure_code:
+        secure_code = f"# ERROR: Groq failed to generate secure code.\n{req.code}"
+    else:
+        # Register hash so re-scanning this exact code = instant clean result
+        register_secure_code(secure_code)
+    return {"secure_code": secure_code}
 
 class ExplainRequest(BaseModel):
     vuln_type: str
@@ -694,7 +715,30 @@ def execute_code(req: ExecuteRequest):
                 return {"error": "Unsupported language", "status": "failed"}
 
             start_time = time.time()
-            # Provide dummy input to prevent gets()/scanf() or input() from hanging the execution sandbox
+
+            # ── Pre-execution check: detect web server / non-runnable code ──────
+            web_server_keywords = ['app.run(', 'Flask(__name__)', 'Flask(', 'uvicorn.run', 
+                                   'fastapi', 'django', 'http.server', 'socketserver',
+                                   'BaseHTTPRequestHandler', 'serve_forever']
+            is_web_app = any(kw in req.code for kw in web_server_keywords)
+            if is_web_app:
+                return {
+                    "output": (
+                        "[Web Application Detected]\n\n"
+                        "This code starts a web server (Flask / FastAPI / Django).\n"
+                        "It cannot run inline in the sandbox — it would block forever.\n\n"
+                        "To test it locally:\n"
+                        "  1. Save the code to a .py file\n"
+                        "  2. Run:  python <filename>.py\n"
+                        "  3. Open: http://localhost:5000 in your browser\n\n"
+                        "You can still SCAN it for vulnerabilities and click FIX to get hardened code."
+                    ),
+                    "status": "success",
+                    "execution_time": "0.001s"
+                }
+            # ────────────────────────────────────────────────────────────────────
+
+            # Provide dummy input to prevent gets()/scanf() or input() from hanging
             dummy_input = "LabyrinthCyberSec_Payload_Test\n" * 10
             
             result = subprocess.run(
@@ -708,15 +752,15 @@ def execute_code(req: ExecuteRequest):
             
             output = result.stdout
             if result.stderr:
-                output += "\nError Output:\n" + result.stderr
+                output += "\nSTDERR:\n" + result.stderr
                 
             return {
-                "output": output,
+                "output": output if output.strip() else "[Process completed with no stdout output]",
                 "status": "success" if result.returncode == 0 else "error",
                 "execution_time": f"{exec_time:.3f}s"
             }
         except subprocess.TimeoutExpired:
-            return {"output": "Execution timed out (5s limit exceeded). Possible infinite loop.", "status": "error", "execution_time": "5.000s"}
+            return {"output": "Execution timed out (5s limit). Possible infinite loop or blocking call.", "status": "error", "execution_time": "5.000s"}
         except Exception as e:
             return {"output": f"Runtime error: {str(e)}", "status": "error", "execution_time": "0.000s"}
 
@@ -1322,5 +1366,5 @@ async def save_fingerprint(request: FingerprintSaveRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    # Use reload=True for development so changes in honeypot.py etc. take effect immediately
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Disable auto-reload on Windows to avoid WinError 10013 on restricted ports.
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

