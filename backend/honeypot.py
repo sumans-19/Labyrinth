@@ -32,35 +32,25 @@ class UnifiedAI:
     def __init__(self):
         self.gemini_model = None
         self.groq_key = GROQ_API_KEY
-        
-        if GEMINI_API_KEY:
+
+        # ── PRIMARY: Groq (fastest, always-on with key) ────────
+        if self.groq_key:
+            print(f"[*] UnifiedAI: Groq Backend ACTIVE (llama-3.3-70b-versatile)")
+        elif GEMINI_API_KEY:
+            # ── SECONDARY: Gemini (only if no Groq key) ───────
             try:
                 genai.configure(api_key=GEMINI_API_KEY)
-                # Check if the key is valid by attempting a light model init
                 self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-                print("[*] UnifiedAI: Gemini Backend Initialized")
+                print("[*] UnifiedAI: Gemini Backend Initialized (fallback)")
             except Exception as e:
-                print(f"[!] UnifiedAI: Gemini Init Failed (Check API Key Scopes): {e}")
+                print(f"[!] UnifiedAI: Gemini Init Failed: {e}")
                 self.gemini_model = None
-                
-        if not self.gemini_model and self.groq_key:
-            print("[*] UnifiedAI: Falling back to Groq Backend")
+        else:
+            print("[!] UnifiedAI: No AI backend configured. Using deterministic logic only.")
 
     def generate_content(self, prompt: str) -> Any:
-        # Try Gemini first
-        if self.gemini_model:
-            try:
-                response = self.gemini_model.generate_content(prompt)
-                if response and response.text:
-                    return type('obj', (object,), {'text': response.text})
-            except Exception as e:
-                if "403" in str(e):
-                    print("[!] UnifiedAI: Gemini 403 Error (Permission Denied). Disabling Gemini.")
-                    self.gemini_model = None
-                else:
-                    print(f"[!] UnifiedAI: Gemini Generation Failed: {e}")
-
-        # Fallback to Groq
+        """Primary generation method — tries Groq first, then Gemini."""
+        # ── 1. Try Groq (Primary) ──────────────────────────────
         if self.groq_key:
             try:
                 url = "https://api.groq.com/openai/v1/chat/completions"
@@ -71,19 +61,40 @@ class UnifiedAI:
                 payload = {
                     "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7
+                    "temperature": 0.7,
+                    "max_tokens": 512
                 }
-                resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                resp = requests.post(url, json=payload, headers=headers, timeout=15)
                 if resp.status_code == 200:
                     text = resp.json()['choices'][0]['message']['content']
                     return type('obj', (object,), {'text': text})
                 elif resp.status_code == 429:
-                    print("[!] UnifiedAI: Groq Rate Limit Reached. Falling back to static.")
+                    print("[!] UnifiedAI: Groq Rate Limit. Trying Gemini fallback...")
                 else:
-                    print(f"[!] UnifiedAI: Groq API Error: {resp.status_code} - {resp.text}")
+                    print(f"[!] UnifiedAI: Groq API Error {resp.status_code}: {resp.text[:200]}")
             except Exception as e:
                 print(f"[!] UnifiedAI: Groq Generation Failed: {e}")
 
+        # ── 2. Gemini Fallback ─────────────────────────────────
+        if self.gemini_model:
+            try:
+                response = self.gemini_model.generate_content(prompt)
+                if response and response.text:
+                    return type('obj', (object,), {'text': response.text})
+            except Exception as e:
+                if "403" in str(e):
+                    print("[!] UnifiedAI: Gemini 403 (Permission Denied). Disabling.")
+                    self.gemini_model = None
+                else:
+                    print(f"[!] UnifiedAI: Gemini Generation Failed: {e}")
+
+        return None
+
+    def generate(self, prompt: str, json_format: bool = False) -> Any:
+        """Alias for generate_content — returns text string or None."""
+        result = self.generate_content(prompt)
+        if result and hasattr(result, 'text'):
+            return result.text
         return None
 
 shield_ai = UnifiedAI()

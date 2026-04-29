@@ -5,6 +5,8 @@ import random
 import string
 import json
 import requests
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="google")
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text

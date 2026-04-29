@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+ENV/
+env/
+.env
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Labyrinth Forge Specific
+backend/sandboxes/
+*.db
+behavioral_samples.json
+model/profiles/

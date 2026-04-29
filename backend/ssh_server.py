@@ -3,7 +3,9 @@ import threading
 import socket
 import time
 import os
+import asyncio
 from honeypot import HoneypotSession
+from live_ml_bridge import run_ensemble_analysis, build_command_telemetry
 
 # ── Pre-generate host key at module load (fast connections) ─
 _HOST_KEY_FILE = os.path.join(os.path.dirname(__file__), "host.key")
@@ -138,18 +140,50 @@ def handle_ssh_connection(client_socket, addr, broadcast_callback):
             output = honeypot_session.process_command(cmd, addr[0])
             chan.send(output.replace("\n", "\r\n") + "\r\n")
 
-            # Mirror to dashboard
-            print(f"[*] SSH: Triggering 'command' broadcast for '{cmd}'")
-            broadcast_callback({
-                "type": "command",
-                "command": cmd,
-                "output": output,
-                "prompt": honeypot_session.prompt,
-                "profile": honeypot_session.get_profile(),
-                "attack_intel": honeypot_session.get_attack_intel(),
-                "prediction": honeypot_session.predict_next_move(),
-                "risk_event": honeypot_session.calculate_command_risk(cmd) > 15
-            })
+            # Neural Ensemble & Telemetry (Enriched for WarRoom)
+            try:
+                # Since we are in a thread, we need to run the async bridge
+                loop = asyncio.new_event_loop()
+                ensemble_result, ai_narration = loop.run_until_complete(run_ensemble_analysis(honeypot_session))
+                
+                profile = honeypot_session.get_profile()
+                attack_intel = honeypot_session.get_attack_intel()
+                prediction = honeypot_session.predict_next_move()
+                
+                command_analysis = build_command_telemetry(
+                    honeypot_session, cmd, output, profile, attack_intel, prediction
+                )
+                
+                print(f"[*] SSH: Broadcasting enriched ML telemetry for '{cmd}'")
+                broadcast_callback({
+                    "type": "command",
+                    "session_id": honeypot_session.session_id,
+                    "command": cmd,
+                    "output": output,
+                    "prompt": honeypot_session.prompt,
+                    "profile": profile,
+                    "attack_intel": attack_intel,
+                    "prediction": prediction,
+                    "command_analysis": command_analysis,
+                    "ensemble_analysis": ensemble_result,
+                    "ai_narration": ai_narration,
+                    "risk_event": command_analysis["risk_score"] > 15,
+                    "timestamp": time.time() * 1000
+                })
+                loop.close()
+            except Exception as e:
+                print(f"[!] SSH ML Bridge Error: {e}")
+                # Fallback to basic broadcast
+                broadcast_callback({
+                    "type": "command",
+                    "command": cmd,
+                    "output": output,
+                    "prompt": honeypot_session.prompt,
+                    "profile": honeypot_session.get_profile(),
+                    "attack_intel": honeypot_session.get_attack_intel(),
+                    "prediction": honeypot_session.predict_next_move(),
+                    "risk_event": honeypot_session.calculate_command_risk(cmd) > 15
+                })
 
         chan.close()
         transport.close()

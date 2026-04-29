@@ -18,8 +18,9 @@ New-NetFirewallRule -DisplayName "LabyrinthForge-Honeypot" `
     -Direction Inbound `
     -Action Allow `
     -Protocol TCP `
-    -LocalPort 8000,3000,2222 `
+    -LocalPort 8000,5173,2222,8080 `
     -RemoteAddress Any `
+    -Profile Any `
     -Description "Allow external connections for Labyrinth Forge system."
 
 Write-Host "[SUCCESS] Firewall rules updated! Your friend should now be able to connect." -ForegroundColor Green

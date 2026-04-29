@@ -278,5 +278,465 @@
         "type": "INTERNAL_API_TOKEN",
         "value_preview": "internal_a...",
         "created_at": "2026-04-29T10:13:12.931401"
+    },
+    "44a2c71abe188ae6af5e7841e5fe260fb611c9477c993a0b12cca213c0e7b5f9": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAB2A3BA...",
+        "created_at": "2026-04-29T10:33:06.403316"
+    },
+    "68cd638caa9277e28faca45ba941069fe2f01b3de34c53ca5bdd7409fedd0cdd": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "09376adeb2...",
+        "created_at": "2026-04-29T10:33:06.403316"
+    },
+    "e9d737bd38b511d398da971333e358638cdd2ae39d732ce29e9cc34b145b66cb": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T10:33:06.403316"
+    },
+    "52cfbfc4cb8528cc3c40415d575dc0de540f43015eb467d7d9f6488d32115c66": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T10:33:06.403316"
+    },
+    "b5e6740c9f8e87a5be5be5b4ebe4c3db3cf425712d4ffc476bc25c9d36184883": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAC5B217...",
+        "created_at": "2026-04-29T10:33:45.195435"
+    },
+    "4699e31020b4d00d5d71230f0f5bcfe0f0fb9ac87874cf37c7d587202e62f351": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "23436561c5...",
+        "created_at": "2026-04-29T10:33:45.195435"
+    },
+    "b65bd3ec83ba3e1cccdd3d70c76e21a5cfbbe545b3cc759f33a77776a221df10": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T10:33:45.195435"
+    },
+    "eeb0a452b1b1eb254d55294ca8311f97fc05cbdd8b426289ea634489538c1d84": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T10:33:45.195435"
+    },
+    "dcf1ae3ae369aa1cbf6c15c734ddc966ccd858ece746ac91bf44f2a05e078fb6": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAE1C229...",
+        "created_at": "2026-04-29T10:54:57.085898"
+    },
+    "199a805fe92ef225b2a86df033933ef1f6b56547ffd187ad7a3ee1bab0320f4b": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "61e59fab6c...",
+        "created_at": "2026-04-29T10:54:57.085898"
+    },
+    "579facc2e0c0d18e512123da9eff02afe43b820b32f2529f1351a732b7ac0767": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T10:54:57.085898"
+    },
+    "21647fe9d2c2d17ffe3fe66ee5a5e5d6cac79e2b82c406ea1faa4ae99a5cdaa8": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T10:54:57.085898"
+    },
+    "c122f109ca360c5ada4820f9beb854cbb720bdc39810bfba251acd18f2ba3da4": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA098CEB...",
+        "created_at": "2026-04-29T11:08:09.677023"
+    },
+    "5a7747a2bd1aa81ab7d5952c9678451b26da4ce5d2e5edd8490534bc2c3b4a9d": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "c5eb21cd59...",
+        "created_at": "2026-04-29T11:08:09.677023"
+    },
+    "c858e067e1fb59e26e82ab5f2c5996a135544cc7866dc938ea65c7c285d0de9b": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T11:08:09.677023"
+    },
+    "04542cb39a3e61874e634e23e4f8e01ae04dec7de3ab0e3bad918d51b428bce4": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T11:08:09.677023"
+    },
+    "1fecc2ce548f0d4b3e976e315b09e33b1c215b9f056d4f4f00ed03055e3f117a": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA1D75C4...",
+        "created_at": "2026-04-29T12:33:24.735830"
+    },
+    "2dead7f3f5bb589eb2e14553e870e34b27c6f85f2ad668b37b16844059db4ac8": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "0f1a6bfa69...",
+        "created_at": "2026-04-29T12:33:24.735830"
+    },
+    "ad0ba2acf9d73c6fd45584a27fed3879a595f1d48c28150cdbea4b2a551ea094": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T12:33:24.735830"
+    },
+    "d106d3e1ba5dbb4a1aca1e07fb69269fad89573177a4f8e5d6b4f45ae4f58f27": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T12:33:24.735830"
+    },
+    "aed2f7502b3f5dc62cf1cab912038b56632a87884a74dd282b68acd32546f81f": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAFFFDB3...",
+        "created_at": "2026-04-29T12:33:59.621245"
+    },
+    "2c8be2dca09ad87f6790bd38db1e8568fee3a42fa8d7059373003d9cdd732ba3": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "f41802173a...",
+        "created_at": "2026-04-29T12:33:59.621245"
+    },
+    "18010c90447bcd16117614b89c93946a32a885d7f5e6350392499be7a4e6d2b8": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T12:33:59.621245"
+    },
+    "a0ff582fa7900fe42fe17b7a9b246e34217d9ffeb29f677a344fe681424e1161": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T12:33:59.621245"
+    },
+    "d7834826d01f7d9a5d744e39907b324fda66acc5c1c0803bed152c1060d1dbc0": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA21DB78...",
+        "created_at": "2026-04-29T12:43:46.262558"
+    },
+    "5362881fff5dc25a4d73de0dcb41cadf6b50d9ff16274a0a74a282e3d8e069a1": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "aa138c9ba9...",
+        "created_at": "2026-04-29T12:43:46.262558"
+    },
+    "a0b4322f9d4eea077dc3af1dab195eb585a5621b1994f621d47d54101d9a6719": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T12:43:46.262558"
+    },
+    "5c75f35a81e83b765116609f4cf08ba98d877b6e9f7694a38ba8bff61d7328b8": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T12:43:46.262558"
+    },
+    "e1571f77036329cf6531c0263c6a89acbd6467a109575f0cc4b2e4c95f032b51": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA70F3F1...",
+        "created_at": "2026-04-29T12:58:54.766725"
+    },
+    "0da74b0120678982601d45fcc4ace6efca2e556980f7fbcd0c0e2daeafc1ade2": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "a8315492fe...",
+        "created_at": "2026-04-29T12:58:54.766725"
+    },
+    "0dcb91b0d7e41de538f53c229d02a16f6293e2b1aa024c8fa52d24e0a3197ca7": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T12:58:54.766725"
+    },
+    "5b6cd869b04001a6778aa5171d813fc9d90a973e562ce5159f967245faa32333": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T12:58:54.766725"
+    },
+    "f08de7f0c3f89b19368f665c7456acb97903a5ea85b466d31fb7ed86486a8eb9": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA0CBE9B...",
+        "created_at": "2026-04-29T13:00:38.334513"
+    },
+    "76fc2463499d24048c7dca991c6c478ea67b35808fd7f5a08baf01d2075cb55f": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "47e546c675...",
+        "created_at": "2026-04-29T13:00:38.334513"
+    },
+    "9d8eaa4225984c42e32f9ac58e8db5281f790020b03f10f866e878be3e6da4fb": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:00:38.334513"
+    },
+    "e029af2a1a4efb71999cf7b193241363667f24b4b06fd4ccad39cf6fc193d078": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:00:38.334513"
+    },
+    "61de3ea6c2b1764cc370ac6815d7394f977681b78dbabc6d316ed39496d950d7": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAAA35C2...",
+        "created_at": "2026-04-29T13:01:54.754056"
+    },
+    "d21b2659f08072853d8136cebde29e939e99b8d604d09f37b43fd33a89a864f3": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "ca8e02b69e...",
+        "created_at": "2026-04-29T13:01:54.754056"
+    },
+    "d5df5cbdbf7df4f23307210e9eb09d62c9521b1b69c6affa829c41fe2dd5e09c": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:01:54.754056"
+    },
+    "414137d07c36910ef5e1dee0092c1a87c20a4e90f3cd70323e66c16db770fc76": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:01:54.754056"
+    },
+    "82b2103a465dc3ec4cb6f698df96d96112ae51a570f59af9ee66cd64aec885d4": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA266DC9...",
+        "created_at": "2026-04-29T13:10:33.201231"
+    },
+    "fbbb49bb246174db55c33da2d3b4ae48ea3d29e94a6557ce584c0ba1255c20e5": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "2169ff55a5...",
+        "created_at": "2026-04-29T13:10:33.201231"
+    },
+    "b139010b28b08cf1fb9765d8cfccb981f8811a657dc8a91a1132abc4aa52c4ea": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:10:33.201231"
+    },
+    "7b3198e3172a87b3721dba06b473573de517ed29b39e26ebdb783087953ac2ca": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:10:33.201231"
+    },
+    "e75816706250dea9b7d7039eecd2fdaf2deebae71958576927d4d23cd139aed0": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA2C0C86...",
+        "created_at": "2026-04-29T13:11:25.295475"
+    },
+    "7f5ade0dffb74422358aa1c06bbc9a360535c8b4c72a2ffeb5ddb0eb45445a3e": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "2a3972629d...",
+        "created_at": "2026-04-29T13:11:25.295475"
+    },
+    "ece10b04a85c3154cf014faf0691060ab5a10823eb8e6fe17b965d36639ed9fb": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:11:25.295475"
+    },
+    "12f0cc52310f76866a2c6280adaa29d0ba7705a88c0822da5ec5b732e109ce94": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:11:25.295475"
+    },
+    "3d0fe9709658a8c2d1155d3926335740307974df6e5734bdf1f918a902c818c7": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA73ED3A...",
+        "created_at": "2026-04-29T13:15:41.290227"
+    },
+    "bd66c181c22eafa5daac3fb74ca57ffc846156dd215332eba78d4e05d362d45f": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "b6bac5f832...",
+        "created_at": "2026-04-29T13:15:41.290227"
+    },
+    "ef77c40875055f633bbd0accdcca58e03605c02b7e126c9d146f86f15ba4817f": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:15:41.290227"
+    },
+    "2ebe839edf174c67733ca6eafb4192a44f069b9c78d791d3c6177d25737fcb16": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:15:41.290227"
+    },
+    "2f1dd454ed05587997ad4dd8faffe22b248ebb60a863d28f31a8aa11a312de3c": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA179536...",
+        "created_at": "2026-04-29T13:15:57.839278"
+    },
+    "7485ca1f285da62a2df282cb3307d183821527238f89da08b3237057201358b2": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "b88f385f59...",
+        "created_at": "2026-04-29T13:15:57.839278"
+    },
+    "e3726f2f25bd5db132555f043231e106b61ec5e61d046a98aa3d63b7aac54e09": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:15:57.839278"
+    },
+    "d6b5393f3c6fe268a02851989f3341c9d6fd6003017789fd50b6411aad49457a": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:15:57.839278"
+    },
+    "a521b293b93c90bcafcc9188d5c9b84235f8537e49c1abc0a6f4a7597e0c016a": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAF00FDD...",
+        "created_at": "2026-04-29T13:55:55.630184"
+    },
+    "c6766e8f42291eae2ab597aed538f3db8b6c6a363956ac2231d408d8fb60bee3": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "46092783a6...",
+        "created_at": "2026-04-29T13:55:55.630184"
+    },
+    "4ebd42af6ae18d91122f92c2d3fa95e730918be01e7f81401edc67844080598a": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T13:55:55.630184"
+    },
+    "328ac7940319f467c3eaf1f19f9c771ab2c53bc5169f31cea4a2a06527eeaeaa": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T13:55:55.630184"
+    },
+    "57e3d6dbf47c70c0716d02b7cda8af8e2aca7509d709bade4eb4637356d7cd86": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA3FD0AC...",
+        "created_at": "2026-04-29T14:24:52.184138"
+    },
+    "46a84c9e42b3a21c2abeea7a179a6a6fc3499d1ef4312fde07770794992c5fe7": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "c7f9be7152...",
+        "created_at": "2026-04-29T14:24:52.184138"
+    },
+    "9df0f52227c22d26a308110bfef231e2daf27bf2d920fa778e26104b84c70917": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:24:52.184138"
+    },
+    "396b35a9c65cedd7024b9d9ec9926eb2a73661c267e7a32726876efa6223579e": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:24:52.184138"
+    },
+    "d385d8149a14a04479742be8eb6271f924977bdb5c2964c924ae27ec819128b6": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIABDAE82...",
+        "created_at": "2026-04-29T14:24:59.520952"
+    },
+    "8142bdecdcb4ee8772e3f7ee9631ad1f949eb2bd6ea66c17cb5fe08d234a8205": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "606fd69bca...",
+        "created_at": "2026-04-29T14:24:59.520952"
+    },
+    "681c90548cf64fb879c3ca04bec33cdfdd5053ef94a3a51ff0744ac548506775": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:24:59.520952"
+    },
+    "64e389fafee158023ff9b6d0f33d39ba7832cf6854857de652579d72cec91ec9": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:24:59.520952"
+    },
+    "58828dc4314ab297bae174879d85705086e8b9374e989756a32da51ae870be38": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA389972...",
+        "created_at": "2026-04-29T14:43:24.274667"
+    },
+    "09f29771a8a7c978408539d2033369ab79e84d3050df5945d469dff02e90475b": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "3bc3740296...",
+        "created_at": "2026-04-29T14:43:24.274667"
+    },
+    "61d80a54db53570c2f2333059510772ecfca726be7bc426e7cbc47d70c39556c": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:43:24.274667"
+    },
+    "eff5935ea9b12ec0e903bbac8020272a9aad6813b040284ad74363b4dba06378": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:43:24.274667"
+    },
+    "d9f21a9f0f20f9c73783e046c72d5949e0b227506ae088354fce1bb8b776f2a3": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIAA18E17...",
+        "created_at": "2026-04-29T14:48:25.980261"
+    },
+    "6f7965958ba2e2ca67adaf50ec1b605a40a75e40d55ad15b67f8883a9dd94fee": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "54d3589598...",
+        "created_at": "2026-04-29T14:48:25.980261"
+    },
+    "9911559be54b9f67219c42310c28c52e21ba8a85c701107373bea89f502fc080": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:48:25.980261"
+    },
+    "d0972bb8ae60b05c9a27eea8d7235c7311a290209e322bd6d41ac39cef3471ee": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:48:25.980261"
+    },
+    "6857fc593e360a7ffb79907f1ec33d531f29f334b116b7ede3b84a865bb007b9": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA984604...",
+        "created_at": "2026-04-29T14:50:48.230288"
+    },
+    "102d9782feee278cdc3b0784c8a51ce7b8a8f2530d7a24d875f8b09dd21938b3": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "976c7e5bfd...",
+        "created_at": "2026-04-29T14:50:48.230288"
+    },
+    "ced2b10fc500effa6b1cbd751c7260d5253cadc101edc3064ab4015ee8ba4fe8": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:50:48.230288"
+    },
+    "64cd3700e7b6067cbfd83bcd7ed705aec9c114c7656e2e54c5464070b4fce822": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:50:48.230288"
+    },
+    "d3c34008b678a5f970143eb551fca834f5ed790db676e12c2fa7cf525e59301b": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA04122D...",
+        "created_at": "2026-04-29T14:51:01.032491"
+    },
+    "7cb5f95cbaab9be84acde365d0bc99515905e1659a277845e8c1df81968d9936": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "4b71d38799...",
+        "created_at": "2026-04-29T14:51:01.032491"
+    },
+    "df880830c3994f1054096752d0b3cba95c55a85e3161763cc44dce48319f0bff": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:51:01.032491"
+    },
+    "f2f760f66a24642ad33806084d4c06a27a5a91d8bd4a5f70f7d671c67f3d47f9": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:51:01.032491"
+    },
+    "5c270d27925c4396c2e02c58d33ee2c6ade2c38349af6116fc0032dbc5ef1f84": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA22C5D2...",
+        "created_at": "2026-04-29T14:53:45.928805"
+    },
+    "99c90a7f9b64367cefe228ccdf7e727698abe666d0d29a1c49d8e9f0fe8f180b": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "2b533ac9e6...",
+        "created_at": "2026-04-29T14:53:45.928805"
+    },
+    "3e10bf6e75363e2bb2e8b99efb87df43781e10684a906026cd30ac95ef8699ec": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T14:53:45.928805"
+    },
+    "5d68df23f79fe09cb0671904783758ca4af611848e8c37d483ccef893183acf7": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T14:53:45.928805"
+    },
+    "96844dfa857b08721dcbf65fa0c26921af7ad29853d737885bfe73ee89c93b6d": {
+        "type": "AWS_ACCESS_KEY_ID",
+        "value_preview": "AKIA9E74C1...",
+        "created_at": "2026-04-29T15:00:53.091908"
+    },
+    "7a2652b42cc730ae8cdbc3411e870a9620ed5aa53fd583d3f48ded6d192d5787": {
+        "type": "AWS_SECRET_ACCESS_KEY",
+        "value_preview": "92f3bead9c...",
+        "created_at": "2026-04-29T15:00:53.091908"
+    },
+    "21c1fbabc13a5480b1fc07ab408cd688a416a6d81c41718c909d5f0f223fcb3e": {
+        "type": "MONGODB_URI",
+        "value_preview": "mongodb+sr...",
+        "created_at": "2026-04-29T15:00:53.091908"
+    },
+    "9d3a10da826bb6af34f6f09da2ce5db23eaf2966612414c77e3c7ee1d5b2a79d": {
+        "type": "INTERNAL_API_TOKEN",
+        "value_preview": "internal_a...",
+        "created_at": "2026-04-29T15:00:53.091908"
     }
 }

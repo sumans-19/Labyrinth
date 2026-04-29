@@ -5,7 +5,7 @@ import {
     Copy, Layout, Terminal, Loader2, AlertTriangle, Cpu,
     ChevronDown, ChevronUp, Activity, BarChart3, Fingerprint,
     X, Check, Settings, Upload, Play, Download, Trash2, FileCode2,
-    Lock, AlertCircle, User, Server, Skull, Target, Eye, Database
+    Lock, AlertCircle, User, Server, Skull, Target, Eye, Database, Box
 } from 'lucide-react';
 
 // ── Phase config (dynamic — any phase name works) ─────────────────────────────
@@ -174,7 +174,7 @@ function AttackChainVisual({ chain, mitigation }) {
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function DevSecOps() {
+export default function DevSecOps({ onNavigate }) {
     const [code, setCode] = useState('def vulnerable_function():\n    password = "hardcoded_secret"\n    cmd = input("Enter command: ")\n    import os\n    os.system(cmd)\n');
     const [expandedFinding, setExpandedFinding] = useState(null);
     const [copiedSource, setCopiedSource] = useState(false);
@@ -409,6 +409,12 @@ export default function DevSecOps() {
                         <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">Hardening Mode</span>
                         <span className="text-xs font-bold text-neon-green font-[Orbitron] tracking-widest flex items-center gap-2">ACTIVE <Activity className="w-3 h-3" /></span>
                     </div>
+                    <button 
+                        onClick={() => onNavigate('sentinel')}
+                        className="flex items-center gap-2 py-2 px-4 bg-neon-purple/10 hover:bg-neon-purple/20 border border-neon-purple/30 text-neon-purple rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all"
+                    >
+                        <Box className="w-4 h-4" /> SENTINEL SANDBOX
+                    </button>
                     <button onClick={handleScan} disabled={isScanning || !code.trim()} className="btn-neon btn-neon-blue flex items-center gap-3">
                         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 fill-current" /> Initialize Scan</>}
                     </button>

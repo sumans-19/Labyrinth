@@ -3,7 +3,7 @@ import {
     Users, ShieldAlert, FileWarning, Eye, Activity,
     Search, Filter, Lock, Unlock, Download,
     AlertCircle, Terminal, BarChart3, Database,
-    Network, UserX, Bomb, Crosshair, Target
+    Network, UserX, Bomb, Crosshair, Target, UserCheck
 } from 'lucide-react';
 
 export default function InternalThreat({ onNavigate }) {
@@ -71,6 +71,12 @@ export default function InternalThreat({ onNavigate }) {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <button 
+                        onClick={() => onNavigate('impersonator')}
+                        className="flex items-center gap-2 py-2 px-4 bg-neon-blue/10 hover:bg-neon-blue/20 border border-neon-blue/30 text-neon-blue rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all"
+                    >
+                        <UserCheck className="w-4 h-4" /> IMPERSONATOR ENGINE
+                    </button>
                     <button className="btn-neon btn-neon-purple text-[10px] py-2">
                         <Download className="w-3.5 h-3.5" /> EXPORT LOGS
                     </button>

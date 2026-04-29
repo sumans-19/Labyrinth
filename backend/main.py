@@ -34,7 +34,11 @@ from fastapi.responses import FileResponse
 from fastapi.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from honeypot import HoneypotSession, DEMO_COMMANDS, DAVE_MESSAGE, KILL_CHAIN_PHASES, PDFReportHandler
+from behavioral_trainer import train_user_models
+from behavioral_trainer import train_user_models
+from honeypot import HoneypotSession, DEMO_COMMANDS, DAVE_MESSAGE, KILL_CHAIN_PHASES, PDFReportHandler, shield_ai
+from ml_ensemble import ensemble as ml_ensemble_instance
+from live_ml_bridge import run_ensemble_analysis, build_command_telemetry
 from scanner import scan_code
 from ssh_server import start_ssh_honeypot
 from generate_decoy import generate_trackable_pdf, generate_trackable_html
@@ -45,7 +49,6 @@ from honeytoken_manager import HoneytokenManager
 import database
 from sentinel import router as sentinel_router
 from impersonator_detector import ImpersonatorDetector
-from behavioral_trainer import train_user_models
 
 
 import google.generativeai as genai
@@ -81,6 +84,7 @@ async def lifespan(app):
             print("[!] Broadcast failed: main_loop not initialized")
         
     start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+    start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
     
     from lateral_interceptor import token_manager
     # Generate honeytoken decoy files on startup using the shared instance
@@ -307,6 +311,98 @@ def get_lan_ip():
         return ip
     except Exception:
         return "127.0.0.1"
+
+@app.get("/api/runtime/network")
+async def get_runtime_network():
+    lan_ip = get_lan_ip()
+    return {
+        "lan_ip": lan_ip,
+        "dashboard_url": f"http://{lan_ip}:5173",
+        "attacker_console_url": f"http://{lan_ip}:5173/?screen=attacker",
+        "ssh_command": f"ssh root@{lan_ip} -p 2222",
+        "raw_port_command": f"nc {lan_ip} 8888"
+    }
+
+# ── Simple TCP Honeypot (for raw port pinging) ───────
+def start_raw_tcp_honeypot(port=8888, broadcast_callback=None):
+    def run_raw_server():
+        import socket
+        import threading
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("0.0.0.0", port))
+            sock.listen(5)
+            print(f"[*] Raw TCP Honeypot listening on port {port}")
+            while True:
+                client, addr = sock.accept()
+                threading.Thread(target=handle_raw_client, args=(client, addr, broadcast_callback), daemon=True).start()
+        except Exception as e:
+            print(f"[!] Raw TCP Honeypot Error: {e}")
+
+    def handle_raw_client(client, addr, broadcast_callback):
+        client.send(b"Labyrinth Security System - Authorized Access Only\n\n# ")
+        session = HoneypotSession()
+        session.session_id = f"raw-{int(time.time())}"
+        
+        # Notify dashboard of connection
+        if broadcast_callback:
+            broadcast_callback({
+                "type": "init",
+                "session_id": session.session_id,
+                "attacker_ip": addr[0],
+                "message": f"🔌 PORT SCAN DETECTED \u2014 Raw connection from {addr[0]} on port {port}"
+            })
+
+        try:
+            while True:
+                data = client.recv(1024)
+                if not data: break
+                cmd = data.decode('utf-8', errors='ignore').strip()
+                if not cmd: continue
+                if cmd.lower() in ["exit", "quit"]: break
+                
+                output = session.process_command(cmd, addr[0])
+                client.send(f"{output}\n\n# ".encode())
+
+                # Enriched ML Telemetry
+                if broadcast_callback:
+                    # Run async analysis in the thread
+                    try:
+                        import asyncio
+                        from live_ml_bridge import run_ensemble_analysis, build_command_telemetry
+                        loop = asyncio.new_event_loop()
+                        ensemble_result, ai_narration = loop.run_until_complete(run_ensemble_analysis(session))
+                        profile = session.get_profile()
+                        attack_intel = session.get_attack_intel()
+                        prediction = session.predict_next_move()
+                        command_analysis = build_command_telemetry(session, cmd, output, profile, attack_intel, prediction)
+                        
+                        broadcast_callback({
+                            "type": "command",
+                            "session_id": session.session_id,
+                            "command": cmd,
+                            "output": output,
+                            "prompt": "# ",
+                            "profile": profile,
+                            "attack_intel": attack_intel,
+                            "prediction": prediction,
+                            "command_analysis": command_analysis,
+                            "ensemble_analysis": ensemble_result,
+                            "ai_narration": ai_narration,
+                            "risk_event": command_analysis["risk_score"] > 15,
+                            "timestamp": time.time() * 1000
+                        })
+                        loop.close()
+                    except Exception as ex:
+                        print(f"Raw ML Error: {ex}")
+
+            client.close()
+        except Exception:
+            client.close()
+
+    import threading
+    threading.Thread(target=run_raw_server, daemon=True).start()
 
 def _parse_user_agent(ua: str) -> dict:
     """Parse a User-Agent string into OS, browser, and device type."""
@@ -986,10 +1082,9 @@ async def ghost_pixel(file_id: str, request: Request):
             "timestamp": timestamp,
             "is_authorized": True
         })
-
     return Response(content=pixel_data, media_type="image/png")
 
-# ── WebSocket — Attacker CLI Bridge ──────────────────
+# ── WebSocket — Attacker CLI Bridge ──────────────────────
 @app.websocket("/ws/attacker")
 async def attacker_ws(websocket: WebSocket):
     try:
@@ -1026,27 +1121,44 @@ async def attacker_ws(websocket: WebSocket):
             msg = json.loads(data)
             if msg.get("type") == "command":
                 cmd = msg["command"]
-                # Run blocking honeypot logic in a thread to keep the event loop (and keepalives) alive
-                output = await asyncio.to_thread(session.process_command, cmd)
+                # Run blocking honeypot logic in a thread
+                output = await asyncio.to_thread(session.process_command, cmd, ip)
                 profile = await asyncio.to_thread(session.get_profile)
-                
+                attack_intel = await asyncio.to_thread(session.get_attack_intel)
+                prediction = await asyncio.to_thread(session.predict_next_move)
+                command_analysis = await asyncio.to_thread(
+                    build_command_telemetry, session, cmd, output, profile, attack_intel, prediction
+                )
+                risk_event = command_analysis["risk_score"] > 15
+
+                # Neural Ensemble ML Analysis
+                ensemble_result, ai_narration = await run_ensemble_analysis(session)
+
                 # 1. Send response back to Attacker CLI
                 await websocket.send_json({
                     "type": "output",
-                    "output": output,
-                    "prompt": session.prompt
-                })
-
-                # 2. Mirror to all Monitor UIs
-                await broadcast_to_monitors({
-                    "type": "command",
+                    "session_id": sid,
                     "command": cmd,
                     "output": output,
                     "prompt": session.prompt,
                     "profile": profile,
-                    "attack_intel": await asyncio.to_thread(session.get_attack_intel),
-                    "prediction": await asyncio.to_thread(session.predict_next_move),
-                    "risk_event": session.calculate_command_risk(cmd) > 15
+                })
+
+                # 2. Mirror to all Monitor UIs with full ML data
+                await broadcast_to_monitors({
+                    "type": "command",
+                    "session_id": sid,
+                    "command": cmd,
+                    "output": output,
+                    "prompt": session.prompt,
+                    "profile": profile,
+                    "attack_intel": attack_intel,
+                    "prediction": prediction,
+                    "command_analysis": command_analysis,
+                    "risk_event": risk_event,
+                    "ensemble_analysis": ensemble_result,
+                    "ai_narration": ai_narration,
+                    "timestamp": time.time() * 1000,
                 })
     except (WebSocketDisconnect, RuntimeError, ConnectionResetError):
         pass
@@ -1128,14 +1240,24 @@ async def demo_ws(websocket: WebSocket):
                 await asyncio.sleep(delay)
 
                 output = await asyncio.to_thread(session.process_command, cmd)
+                profile = await asyncio.to_thread(session.get_profile)
+                attack_intel = await asyncio.to_thread(session.get_attack_intel)
+                prediction = await asyncio.to_thread(session.predict_next_move)
+                command_analysis = await asyncio.to_thread(
+                    build_command_telemetry, session, cmd, output, profile, attack_intel, prediction
+                )
+                ensemble_result, ai_narration = await _run_ensemble_analysis(session)
                 await websocket.send_json({
                     "type": "command",
                     "command": cmd,
                     "output": output,
                     "prompt": session.prompt,
-                    "profile": await asyncio.to_thread(session.get_profile),
-                    "attack_intel": await asyncio.to_thread(session.get_attack_intel),
-                    "prediction": await asyncio.to_thread(session.predict_next_move),
+                    "profile": profile,
+                    "attack_intel": attack_intel,
+                    "prediction": prediction,
+                    "command_analysis": command_analysis,
+                    "ensemble_analysis": ensemble_result,
+                    "ai_narration": ai_narration,
                 })
 
                 # Dave from IT appears after 8 commands

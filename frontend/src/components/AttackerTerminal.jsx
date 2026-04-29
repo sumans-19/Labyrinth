@@ -4,7 +4,12 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { Monitor } from 'lucide-react';
 
-const AttackerTerminal = forwardRef(({ mode }, ref) => {
+const AttackerTerminal = forwardRef(({
+    mode,
+    title = 'LIVE ATTACKER TERMINAL',
+    waitingMessage = 'Waiting for attacker connection...',
+    helperMessage = 'Click "Start Live Attack Simulation" to begin.',
+}, ref) => {
     const termDivRef = useRef(null);
     const terminalRef = useRef(null);
     const fitAddonRef = useRef(null);
@@ -64,8 +69,8 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
         terminal.writeln('\x1b[1;36m                        ║       Honeypot SSH Session Monitor                ║\x1b[0m');
         terminal.writeln('\x1b[1;36m                        ╚═══════════════════════════════════════════════════╝\x1b[0m');
         terminal.writeln('');
-        terminal.writeln('\x1b[90mWaiting for attacker connection...\x1b[0m');
-        terminal.writeln('\x1b[90mClick "Start Live Attack Simulation" to begin.\x1b[0m');
+        terminal.writeln(`\x1b[90m${waitingMessage}\x1b[0m`);
+        terminal.writeln(`\x1b[90m${helperMessage}\x1b[0m`);
         terminal.writeln('');
 
         const handleResize = () => {
@@ -93,7 +98,7 @@ const AttackerTerminal = forwardRef(({ mode }, ref) => {
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/30">
                 <div className="flex items-center gap-2">
                     <Monitor className="w-4 h-4 text-neon-green" />
-                    <span className="font-[Orbitron] text-xs font-semibold text-neon-green tracking-wider">LIVE ATTACKER TERMINAL</span>
+                    <span className="font-[Orbitron] text-xs font-semibold text-neon-green tracking-wider">{title}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-gray-500">{modeLabel}</span>

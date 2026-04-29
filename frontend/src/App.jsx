@@ -8,20 +8,28 @@ import TheLeakerDashboard from './pages/TheLeakerDashboard';
 import LateralMoverPortal from './pages/LateralMoverPortal';
 import SentinelSandbox from './pages/SentinelSandbox';
 import ImpersonatorPortal from './pages/ImpersonatorPortal';
+import NeuralAnalytics from './pages/NeuralAnalytics';
+import RemoteAttackerConsole from './pages/RemoteAttackerConsole';
 import CyberCorner from './components/CyberCorner';
-import { Shield, Swords, Code2, Home, ShieldAlert, Box, UserCheck } from 'lucide-react';
+import { Shield, Swords, Code2, Home, ShieldAlert, Box, UserCheck, BrainCircuit } from 'lucide-react';
 
 const TABS = [
   { id: 'landing', label: 'Home', icon: Home },
   { id: 'warroom', label: 'External Threat', icon: Swords },
   { id: 'devsecops', label: 'Vulnerability Detector', icon: Code2 },
-  { id: 'sentinel', label: 'Sentinel Sandbox', icon: Box },
   { id: 'internalthreat', label: 'Internal Threat', icon: ShieldAlert },
-  { id: 'impersonator', label: 'Impersonator', icon: UserCheck },
+  { id: 'neural-analytics', label: 'Neural Analytics', icon: BrainCircuit },
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('landing');
+  const params = new URLSearchParams(window.location.search);
+  const screenMode = params.get('screen');
+  const initialTab = params.get('tab');
+  const [activeTab, setActiveTab] = useState(initialTab || 'landing');
+
+  if (screenMode === 'attacker') {
+    return <RemoteAttackerConsole />;
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -74,12 +82,13 @@ export default function App() {
       <main className="relative z-10 pt-16">
         {activeTab === 'landing' && <LandingPage onNavigate={setActiveTab} />}
         {activeTab === 'warroom' && <WarRoom />}
-        {activeTab === 'devsecops' && <DevSecOps />}
+        {activeTab === 'devsecops' && <DevSecOps onNavigate={setActiveTab} />}
         {activeTab === 'sentinel' && <SentinelSandbox />}
         {activeTab === 'internalthreat' && <InternalThreat onNavigate={setActiveTab} />}
         {activeTab === 'leaker' && <TheLeakerDashboard onNavigate={setActiveTab} />}
         {activeTab === 'lateral-mover' && <LateralMoverPortal onNavigate={setActiveTab} />}
         {activeTab === 'impersonator' && <ImpersonatorPortal onNavigate={setActiveTab} />}
+        {activeTab === 'neural-analytics' && <NeuralAnalytics onNavigate={setActiveTab} />}
       </main>
     </div>
   );
