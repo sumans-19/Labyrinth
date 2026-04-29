@@ -46,6 +46,7 @@ class RealTimeScorer:
         self.sequence_buffer = []
         self.last_if_score = 0
         self.last_lstm_score = 0
+        self.is_critical = False
         
         # Prefill sequence buffer with the last 10 training samples so MLP works immediately
         data_file = 'behavioral_samples.json'
@@ -57,6 +58,15 @@ class RealTimeScorer:
                     self.sequence_buffer = user_samples[-10:]
         
     def score_action(self, feature_vector: list) -> dict:
+        if self.is_critical:
+            return {
+                'irs': 95,
+                'if_score': self.last_if_score,
+                'lstm_score': self.last_lstm_score,
+                'file_score': 100,
+                'severity': "CRITICAL"
+            }
+            
         fv = np.array(feature_vector)
         
         is_file_event = (sum(fv[:8]) == 0.0)
@@ -83,6 +93,7 @@ class RealTimeScorer:
         file_score = 100 if feature_vector[19] == 1.0 else 0
         
         if file_score == 100:
+            self.is_critical = True
             return {
                 'irs': 95,
                 'if_score': self.last_if_score,
