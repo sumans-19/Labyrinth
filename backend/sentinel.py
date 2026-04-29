@@ -24,6 +24,18 @@ except Exception as e:
 
 # Removed top-level docker_client to instantiate per-request
 
+def get_docker_client():
+    """Try to connect to Docker with Windows-specific fallbacks."""
+    try:
+        # Standard env-based connection (works for Docker Desktop)
+        return docker.from_env()
+    except Exception:
+        try:
+            # Explicit Windows Named Pipe connection
+            return docker.DockerClient(base_url='npipe:////./pipe/docker_engine')
+        except Exception as e:
+            raise Exception("Docker Desktop is not running. Please start Docker Desktop and try again.")
+
 # 1. Models
 class RepoURLRequest(BaseModel):
     url: str
@@ -205,9 +217,9 @@ async def sentinel_sandbox(websocket: WebSocket):
         generate_dockerfile(repo_dir, analysis)
         
         try:
-            docker_client = docker.from_env()
+            docker_client = get_docker_client()
         except Exception as e:
-            await websocket.send_json({"type": "error", "message": f"Docker is not available on the backend: {str(e)}"})
+            await websocket.send_json({"type": "error", "message": str(e)})
             return
              
         await websocket.send_json({"type": "status", "message": "Building image... This might take a moment."})
