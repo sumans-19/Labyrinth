@@ -27,4 +27,4 @@ if not GROQ_API_KEY:
     # We still raise it because the application requires it for AI features
     raise RuntimeError("GROQ_API_KEY not set in environment. Please check your backend/.env file.")
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "llama-3.1-8b-instant"
