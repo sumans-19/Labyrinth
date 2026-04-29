@@ -85,8 +85,9 @@ export default function InternalThreat({ onNavigate }) {
                         onClick={() => {
                             if (i === 0 && onNavigate) onNavigate('leaker');
                             if (i === 1 && onNavigate) onNavigate('lateral-mover');
+                            if (i === 2 && onNavigate) onNavigate('impersonator');
                         }}
-                        className={`glass-card p-8 border min-h-[280px] ${tp.border} ${tp.bg} hover:bg-black/80 transition-all duration-500 group relative overflow-hidden ${tp.glow} ${[0, 1].includes(i) ? 'cursor-pointer hover:scale-[1.02] hover:border-white/50' : 'cursor-default'}`}
+                        className={`glass-card p-8 border min-h-[280px] ${tp.border} ${tp.bg} hover:bg-black/80 transition-all duration-500 group relative overflow-hidden ${tp.glow} ${[0, 1, 2].includes(i) ? 'cursor-pointer hover:scale-[1.02] hover:border-white/50' : 'cursor-default'}`}
                     >
                         {/* Hover accent background overlay */}
                         <div className={`absolute inset-0 bg-gradient-to-b from-transparent to-black/95 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />

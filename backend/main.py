@@ -1,5 +1,14 @@
 import sys
 import os
+import subprocess
+
+# --- Auto-Bootstrap Virtual Environment ---
+# Automatically switch to the isolated venv if the user runs 'python main.py' globally
+venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'Scripts', 'python.exe')
+if os.path.exists(venv_python) and sys.executable.lower() != venv_python.lower():
+    print("[*] Automatically switching to the isolated virtual environment...")
+    sys.exit(subprocess.call([venv_python] + sys.argv))
+# ------------------------------------------
 import asyncio
 import json
 import random
@@ -35,6 +44,11 @@ from middleware import GlobalMonitoringMiddleware
 from honeytoken_manager import HoneytokenManager
 import database
 from sentinel import router as sentinel_router
+from impersonator_detector import ImpersonatorDetector
+from behavioral_trainer import train_user_models
+from pydantic import BaseModel
+import asyncio
+import time
 
 
 import google.generativeai as genai
@@ -97,6 +111,171 @@ app.include_router(ml_router)
 
 # Include Sentinel Sandbox Router
 app.include_router(sentinel_router)
+
+# --- THE IMPERSONATOR ROUTES ---
+
+class BehavioralEvent(BaseModel):
+    session_id: str
+    user_id: str
+    event_type: str
+    timestamp: float
+    payload: dict
+
+# In-memory store for detectors to avoid reloading models constantly
+impersonator_detectors = {}
+
+def get_or_create_detector(session_id, user_id):
+    key = f"{session_id}_{user_id}"
+    if key not in impersonator_detectors:
+        impersonator_detectors[key] = ImpersonatorDetector(session_id, user_id)
+    return impersonator_detectors[key]
+
+async def fire_impersonator_alert(event, score_result, severity):
+    gemini_narrative = ""
+    if gemini_model and severity == 'CRITICAL':
+        prompt = f"SECURITY SYSTEM ALERT - Behavioral Anomaly Detected\nSession: {event.session_id}\nUser Profile: {event.user_id}\nImpersonation Risk Score: {score_result['irs']}/100\nSignal breakdown: Isolation Forest: {score_result['if_score']}/100, Sequence Model: {score_result['lstm_score']}/100, File Pattern: {score_result['file_score']}/100\nIn 2-3 sentences, explain what this means and the likely threat. Be direct."
+        try:
+            response = await asyncio.to_thread(gemini_model.generate_content, prompt)
+            gemini_narrative = response.text.strip()
+        except Exception as e:
+            gemini_narrative = f"Failed to generate narrative: {e}"
+
+    await broadcast_to_monitors({
+        'type': 'IMPERSONATOR_ALERT',
+        'alert_category': 'BEHAVIORAL_ANOMALY',
+        'severity': severity,
+        'timestamp': time.time() * 1000,
+        'session_id': event.session_id,
+        'user_id': event.user_id,
+        'irs': score_result['irs'],
+        'if_score': score_result['if_score'],
+        'lstm_score': score_result['lstm_score'],
+        'file_score': score_result['file_score'],
+        'gemini_analysis': gemini_narrative,
+        'details': f'Behavioral anomaly detected. IRS: {score_result["irs"]}/100.'
+    })
+
+@app.post('/api/impersonator/event')
+async def submit_behavioral_event(event: BehavioralEvent):
+    detector = get_or_create_detector(event.session_id, event.user_id)
+    feature_vector = detector.extract_features(event.event_type, event.payload)
+    
+    if detector.is_learning_phase():
+        raw_cmd = event.payload.get('raw_command', '')
+        if not raw_cmd:
+            raw_cmd = event.payload.get('files_accessed', [''])[0]
+        detector.collect_sample(feature_vector, raw_command=raw_cmd)
+        if detector.sample_count == 30:
+            # Auto-train when learning phase just completed
+            await asyncio.to_thread(train_user_models, event.user_id)
+            detector.load_models()
+            
+        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/30', 'irs': None}
+        
+    if not detector.scorer:
+        return {'phase': 'ERROR', 'error': 'Model not trained', 'irs': None}
+
+    result = detector.scorer.score_action(feature_vector)
+    
+    # Inject the command back into the response so the frontend can display it in the timeline
+    result['command'] = event.payload.get('raw_command', event.payload.get('files_accessed', [''])[0])
+    
+    if result['irs'] >= 85:
+        await fire_impersonator_alert(event, result, 'CRITICAL')
+    elif result['irs'] >= 70:
+        await fire_impersonator_alert(event, result, 'WARNING')
+        
+    return result
+
+@app.get('/api/impersonator/status/{session_id}/{user_id}')
+async def get_impersonator_status(session_id: str, user_id: str):
+    detector = get_or_create_detector(session_id, user_id)
+    if detector.is_learning_phase():
+        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/30'}
+    return {'phase': 'MONITORING', 'progress': '30/30'}
+
+@app.get('/api/impersonator/profile/{session_id}/{user_id}')
+async def get_impersonator_profile(session_id: str, user_id: str):
+    import os, json
+    model_dir = f'model/profiles/{user_id}'
+    profile_path = f'{model_dir}/profile.json'
+    if os.path.exists(profile_path):
+        with open(profile_path, 'r') as f:
+            return json.load(f)
+    return {'error': 'Profile not found'}
+
+@app.post('/api/impersonator/reset/{session_id}/{user_id}')
+async def reset_impersonator(session_id: str, user_id: str):
+    import os, shutil
+    key = f"{session_id}_{user_id}"
+    
+    # 1. Clear memory
+    if key in impersonator_detectors:
+        del impersonator_detectors[key]
+        
+    # 2. Delete json samples
+    if os.path.exists('behavioral_samples.json'):
+        # Filter out this user's samples
+        import json
+        with open('behavioral_samples.json', 'r') as f:
+            samples = json.load(f)
+        samples = [s for s in samples if s['user_id'] != user_id]
+        with open('behavioral_samples.json', 'w') as f:
+            json.dump(samples, f)
+            
+    # 3. Delete models
+    model_dir = f'model/profiles/{user_id}'
+    if os.path.exists(model_dir):
+        shutil.rmtree(model_dir)
+        
+    return {'status': 'reset', 'phase': 'LEARNING', 'progress': '0/30'}
+
+@app.post('/api/impersonator/train/{session_id}/{user_id}')
+async def force_train_impersonator(session_id: str, user_id: str):
+    try:
+        await asyncio.to_thread(train_user_models, user_id)
+        detector = get_or_create_detector(session_id, user_id)
+        detector.load_models()
+        return {'status': 'trained', 'phase': 'MONITORING', 'progress': '30/30'}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}
+
+@app.get('/api/impersonator/report/{user_id}')
+async def get_impersonator_report_data(user_id: str):
+    import os, json
+    samples_path = 'behavioral_samples.json'
+    samples = []
+    if os.path.exists(samples_path):
+        with open(samples_path, 'r') as f:
+            all_samples = json.load(f)
+            samples = [s for s in all_samples if s.get('user_id') == user_id]
+
+    baseline_samples = samples[:30]
+    result_data = []
+    
+    for s in baseline_samples:
+        cmd = s.get('raw_command', '')
+        if not cmd:
+            cmd = s.get('raw_files', '')
+            
+        # The frontend expects avg_dwell, but keystrokes aren't saved in behavioral_samples.json
+        # We can approximate it from the feature vector (index 0 is usually avg_dwell)
+        # Or just extract it safely if it exists.
+        feature_vector = s.get('feature_vector', [])
+        avg_dwell = feature_vector[0] if len(feature_vector) > 0 else 0.0
+            
+
+        result_data.append({
+            'command': cmd,
+            'avg_dwell': avg_dwell
+        })
+        
+    return {'status': 'success', 'data': result_data}
+    
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
 
 def get_client_ip(request: Request):
     """Robust client IP detection for proxies like Ngrok."""

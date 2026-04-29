@@ -7,8 +7,9 @@ import InternalThreat from './pages/InternalThreat';
 import TheLeakerDashboard from './pages/TheLeakerDashboard';
 import LateralMoverPortal from './pages/LateralMoverPortal';
 import SentinelSandbox from './pages/SentinelSandbox';
+import ImpersonatorPortal from './pages/ImpersonatorPortal';
 import CyberCorner from './components/CyberCorner';
-import { Shield, Swords, Code2, Home, ShieldAlert, Box } from 'lucide-react';
+import { Shield, Swords, Code2, Home, ShieldAlert, Box, UserCheck } from 'lucide-react';
 
 const TABS = [
   { id: 'landing', label: 'Home', icon: Home },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'devsecops', label: 'Vulnerability Detector', icon: Code2 },
   { id: 'sentinel', label: 'Sentinel Sandbox', icon: Box },
   { id: 'internalthreat', label: 'Internal Threat', icon: ShieldAlert },
+  { id: 'impersonator', label: 'Impersonator', icon: UserCheck },
 ];
 
 export default function App() {
@@ -77,6 +79,7 @@ export default function App() {
         {activeTab === 'internalthreat' && <InternalThreat onNavigate={setActiveTab} />}
         {activeTab === 'leaker' && <TheLeakerDashboard onNavigate={setActiveTab} />}
         {activeTab === 'lateral-mover' && <LateralMoverPortal onNavigate={setActiveTab} />}
+        {activeTab === 'impersonator' && <ImpersonatorPortal onNavigate={setActiveTab} />}
       </main>
     </div>
   );

@@ -20,6 +20,10 @@ Labyrinth Forge is a next-generation **Active Defense & Cybersecurity Deception 
     *   **Honeytoken Generator**: Creates realistic fake `.env` and `config.json` files containing "Shadow Credentials" (AWS Keys, MongoDB URIs).
     *   **Lateral Interceptor**: A stealthy API router that mimics internal services. It flags any request using a registered honeytoken.
     *   **Simulation Portal**: An interactive terminal where you can assume roles (Dev, DBA, Auditor) and test the deception system yourself.
+*   **The Impersonator (Behavioral Biometrics Engine)**:
+    *   **Dual ML Profiling**: Uses scikit-learn `IsolationForest` (for keystroke dynamics and dwell/flight rhythm) and `MLPRegressor` (for sequential command prediction) to profile and verify the operator's identity based solely on typing behavior.
+    *   **Real-Time IRS**: Calculates a live Impersonator Risk Score (IRS) from 0-100 to instantly flag anomalous sessions.
+    *   **Dynamic Dossier Export**: Includes a high-speed export feature that natively renders a stylized, Cyberpunk-themed PDF training profile of the operator's behavioral baseline.
 
 ### 3. 🛡️ DevSecOps Shield (Aegis)
 *   **Aegis Scanner**: Automatically scans codebases for vulnerabilities and hardcoded secrets before they reach production.
