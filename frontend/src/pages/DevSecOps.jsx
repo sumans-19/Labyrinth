@@ -506,7 +506,6 @@ export default function DevSecOps({ onNavigate }) {
                         {[
                             { id: 'output', label: 'Runtime Output', icon: Terminal },
                             { id: 'vulnerabilities', label: 'Vuln Report', icon: ShieldAlert },
-                            { id: 'exploit', label: 'Exploit Sim', icon: Bug },
                             { id: 'fixed', label: 'Secure Code', icon: ShieldCheck }
                         ].map(tab => (
                             <button

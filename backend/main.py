@@ -1246,7 +1246,7 @@ async def demo_ws(websocket: WebSocket):
                 command_analysis = await asyncio.to_thread(
                     build_command_telemetry, session, cmd, output, profile, attack_intel, prediction
                 )
-                ensemble_result, ai_narration = await _run_ensemble_analysis(session)
+                ensemble_result, ai_narration = await run_ensemble_analysis(session)
                 await websocket.send_json({
                     "type": "command",
                     "command": cmd,

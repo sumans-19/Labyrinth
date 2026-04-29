@@ -1,7 +1,15 @@
 import requests
 import os
 import json
-from devsecops_shield.config import GROQ_API_KEY, MODEL
+from devsecops_shield.config import GROQ_API_KEY, GEMINI_API_KEY, MODEL, GEMINI_MODEL
+import google.generativeai as genai
+
+# Configure Gemini if key is available
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_instance = genai.GenerativeModel(GEMINI_MODEL)
+else:
+    gemini_instance = None
 
 # System prompt is now an Audit-First Directive with Strict Enforcement
 def get_system_prompt(language: str) -> str:
@@ -73,59 +81,66 @@ You MUST return a JSON object. If the code is perfectly secure with zero vulnera
 IMPORTANT: attack_chain must always have 3-4 stages. phase must be one of: Reconnaissance, Exploitation, Privilege Escalation, Impact, Exfiltration. actor must be one of: ATTACKER, SYSTEM, RESULT.
 """
 
+def _clean_secure_code(result):
+    """Defensive cleanup for secure_code field in the JSON response."""
+    if "secure_code" in result:
+        code = result["secure_code"]
+        if "```" in code:
+            # Handle potential markdown blocks inside the JSON string
+            if "```python" in code:
+                code = code.split("```python")[1].split("```")[0].strip()
+            elif "```javascript" in code:
+                code = code.split("```javascript")[1].split("```")[0].strip()
+            else:
+                code = code.split("```")[1].split("```")[0].strip()
+        result["secure_code"] = code
+    return result
+
 def remediate_code(source_code, language="python"):
-    url = "https://api.groq.com/openai/v1/chat/completions"
+    # --- 1. Try Groq (Fastest, Primary) ---
+    if GROQ_API_KEY:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": get_system_prompt(language)},
+                {"role": "user", "content": source_code}
+            ],
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"}
+        }
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL,
-        "messages": [
-            {"role": "system", "content": get_system_prompt(language)},
-            {"role": "user", "content": source_code}
-        ],
-        "temperature": 0.1,
-        "response_format": {"type": "json_object"} # Force JSON mode
-    }
-
-    import time
-    max_retries = 3
-    for attempt in range(max_retries):
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=45)
-            if response.status_code == 429:
-                time.sleep(10 * (attempt + 1))
-                continue
-            response.raise_for_status()
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            
-            # Parse the JSON blob
-            result = json.loads(content)
-            
-            # Defensive cleanup for secure_code
-            if "secure_code" in result:
-                code = result["secure_code"]
-                if "```python" in code:
-                    code = code.split("```python")[1].split("```")[0].strip()
-                elif "```" in code:
-                    code = code.split("```")[1].split("```")[0].strip()
-                result["secure_code"] = code
-                
-            return result
-            
+            response = requests.post(url, headers=headers, json=payload, timeout=20)
+            if response.status_code == 200:
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                return _clean_secure_code(json.loads(content))
+            else:
+                print(f"[!] Groq Scan Failed ({response.status_code}). Switching to Gemini...")
         except Exception as e:
-            if attempt == max_retries - 1:
-                return {
-                    "findings": [],
-                    "secure_code": f"# ERROR: AI Audit failed: {str(e)}"
-                }
-            time.sleep(5)
-    
+            print(f"[!] Groq Scan Error: {e}. Switching to Gemini...")
+
+    # --- 2. Gemini Fallback ---
+    if gemini_instance:
+        try:
+            prompt = get_system_prompt(language) + "\n\nSOURCE CODE TO AUDIT:\n" + source_code
+            # Use generation_config to force JSON if possible, otherwise rely on prompt
+            response = gemini_instance.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            if response and response.text:
+                return _clean_secure_code(json.loads(response.text))
+        except Exception as e:
+            print(f"[!] Gemini Scan Failed: {e}")
+
+    # --- 3. Final Error Response ---
     return {
         "findings": [],
-        "secure_code": "# ERROR: AI Audit failed: Max retries exceeded (Rate Limit)"
+        "secure_code": f"# AI Audit Offline. Verify your API keys in backend/.env."
     }

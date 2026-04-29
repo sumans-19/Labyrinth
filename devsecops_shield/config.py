@@ -19,12 +19,14 @@ def load_env_robustly():
 load_env_robustly()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not GROQ_API_KEY:
+if not GROQ_API_KEY and not GEMINI_API_KEY:
     # Print debug info instead of just crashing instantly to help diagnostics
-    print(f"CRITICAL: GROQ_API_KEY not found in environment!")
+    print(f"CRITICAL: No AI keys found in environment!")
     print(f"Current Working Directory: {os.getcwd()}")
     # We still raise it because the application requires it for AI features
-    raise RuntimeError("GROQ_API_KEY not set in environment. Please check your backend/.env file.")
+    raise RuntimeError("AI keys (GROQ or GEMINI) not set in environment. Please check your backend/.env file.")
 
 MODEL = "llama-3.3-70b-versatile"
+GEMINI_MODEL = "gemini-1.5-flash"
