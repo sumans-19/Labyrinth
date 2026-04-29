@@ -10,8 +10,14 @@ FILE_ACCESS_WEIGHT      = 0.20
 def score_isolation_forest(model, scaler, feature_vector):
     X = scaler.transform([feature_vector])
     score = float(model.decision_function(X)[0])
-    # Softer gradient: 0.15 is considered slightly normal, below that is anomalous
-    risk = max(0, min(100, int((0.15 - score) * 300)))
+    
+    # Map raw decision function (-0.5 to 0.5) to a smooth 0-100 risk
+    # A score of 0.3 (normal) gives (0.3 - 0.3) * 150 = 0
+    # A score of 0.0 (borderline) gives (0.3 - 0.0) * 150 = 45
+    # A score of -0.2 (anomalous) gives (0.3 - -0.2) * 150 = 75
+    risk = int((0.3 - score) * 150)
+    
+    risk = max(0, min(100, risk))
     print(f"[DEBUG] Isolation Forest - Raw Score: {score:.4f} -> Risk: {risk}")
     return risk
 
@@ -38,6 +44,8 @@ class RealTimeScorer:
         
         self.profile  = json.load(open(f'{model_dir}/profile.json'))
         self.sequence_buffer = []
+        self.last_if_score = 0
+        self.last_lstm_score = 0
         
         # Prefill sequence buffer with the last 10 training samples so MLP works immediately
         data_file = 'behavioral_samples.json'
@@ -51,51 +59,44 @@ class RealTimeScorer:
     def score_action(self, feature_vector: list) -> dict:
         fv = np.array(feature_vector)
         
-        if_score = score_isolation_forest(self.if_model, self.scaler, fv)
+        is_file_event = (sum(fv[:8]) == 0.0)
         
-        self.sequence_buffer.append(fv)
-        if len(self.sequence_buffer) >= 10:
-            seq = np.array(self.sequence_buffer[-10:]).flatten()
+        if not is_file_event:
+            self.last_if_score = score_isolation_forest(self.if_model, self.scaler, fv)
             
-            # Predict the next state (which is actually `fv` since we added it to buffer... wait)
-            # Actually, `self.sequence_buffer[-10:]` includes the current action. 
-            # So the input should be the 10 PREVIOUS actions to predict THIS action.
-            # Let's fix that logic: we need 11 actions to have 10 inputs and 1 target.
-            pass
-        
-        if len(self.sequence_buffer) > 10:
-            # The 10 items before current action, scaled
-            seq_scaled = self.scaler.transform(self.sequence_buffer)
-            seq_in = np.array(seq_scaled[-11:-1]).flatten()
-            predicted = self.mlp.predict([seq_in])[0]
-            target = seq_scaled[-1]
-            mse = float(np.mean((predicted - target) ** 2))
-            
-            # Since data is scaled (variance 1), MSE is stable.
-            # Normal variations have an MSE around 0.5 - 2.0. 
-            # We map MSE to a 0-100 risk score, capping at 100 if MSE > 6.0
-            seq_score = min(100, int((mse / 6.0) * 100))
-            print(f"[DEBUG] MLP Sequence - Scaled MSE: {mse:.4f} -> SeqScore: {seq_score}")
-        else:
-            seq_score = 0
-            print(f"[DEBUG] MLP Sequence - Buffer size {len(self.sequence_buffer)} < 11, skipping")
+            self.sequence_buffer.append(fv)
+            if len(self.sequence_buffer) > 10:
+                # The 10 items before current action, scaled
+                seq_scaled = self.scaler.transform(self.sequence_buffer)
+                seq_in = np.array(seq_scaled[-11:-1]).flatten()
+                predicted = self.mlp.predict([seq_in])[0]
+                target = seq_scaled[-1]
+                mse = float(np.mean((predicted - target) ** 2))
+                
+                # Increased sensitivity for Sequence Match
+                self.last_lstm_score = min(100, int((mse / 3.0) * 100))
+                print(f"[DEBUG] MLP Sequence - Scaled MSE: {mse:.4f} -> SeqScore: {self.last_lstm_score}")
+            else:
+                self.last_lstm_score = 0
+                print(f"[DEBUG] MLP Sequence - Buffer size {len(self.sequence_buffer)} < 11, skipping")
             
         file_score = 100 if feature_vector[19] == 1.0 else 0
+        
         if file_score == 100:
             return {
                 'irs': 95,
-                'if_score': if_score,
-                'lstm_score': seq_score,
+                'if_score': self.last_if_score,
+                'lstm_score': self.last_lstm_score,
                 'file_score': 100,
                 'severity': "CRITICAL"
             }
             
-        irs = compute_irs(if_score, seq_score, file_score)
+        irs = compute_irs(self.last_if_score, self.last_lstm_score, file_score)
         
         return {
             'irs': irs,
-            'if_score': if_score,
-            'lstm_score': seq_score,
+            'if_score': self.last_if_score,
+            'lstm_score': self.last_lstm_score,
             'file_score': file_score,
             'severity': classify_severity(irs)
         }

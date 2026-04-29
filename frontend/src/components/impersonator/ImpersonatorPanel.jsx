@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 const ImpersonatorPanel = ({ sessionId, userId }) => {
-    const [status, setStatus] = useState({ phase: 'LEARNING', progress: '0/30' });
+    const [status, setStatus] = useState({ phase: 'LEARNING', progress: '0/15' });
     const [scoreData, setScoreData] = useState(null);
     const [profileData, setProfileData] = useState(null);
     const [timeline, setTimeline] = useState([]);
@@ -40,7 +40,7 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
                         .then(p => setProfileData(p))
                         .catch(() => {});
                 }
-                setStatus({ phase: 'MONITORING', progress: '30/30' });
+                setStatus({ phase: 'MONITORING', progress: '15/15' });
                 setScoreData(data);
                 
                 // If the event included a command, add to timeline
@@ -107,7 +107,7 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
                 <div className="w-full bg-black/60 rounded-full h-3 border border-white/5 overflow-hidden">
                     <div 
                         className="bg-gradient-to-r from-neon-blue/50 to-neon-blue h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                        style={{ width: `${(parseInt(status.progress.split('/')[0]) / 30) * 100}%` }}
+                        style={{ width: `${(parseInt(status.progress.split('/')[0]) / 15) * 100}%` }}
                     ></div>
                 </div>
                 <div className="text-right text-[10px] text-neon-blue font-mono mt-2 tracking-widest uppercase">{status.progress} Samples Collected</div>
@@ -240,7 +240,7 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
                         {/* Metadata */}
                         <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '24px', borderRadius: '8px', marginBottom: '32px', fontFamily: 'monospace' }}>
                             <p style={{ color: '#3B82F6', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px 0' }}><span style={{ color: '#9CA3AF' }}>Target Entity:</span> {userId}</p>
-                            <p style={{ color: '#3B82F6', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px 0' }}><span style={{ color: '#9CA3AF' }}>Samples Collected:</span> {pdfData.length}/30</p>
+                            <p style={{ color: '#3B82F6', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px 0' }}><span style={{ color: '#9CA3AF' }}>Samples Collected:</span> {pdfData.length}/15</p>
                             <p style={{ color: '#3B82F6', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}><span style={{ color: '#9CA3AF' }}>Generated At:</span> {new Date().toUTCString()}</p>
                         </div>
                         

@@ -50,8 +50,8 @@ def train_user_models(user_id: str, data_file: str = 'behavioral_samples.json'):
         all_samples = json.load(f)
         
     user_samples = [s['feature_vector'] for s in all_samples if s['user_id'] == user_id]
-    if len(user_samples) < 30:
-        raise ValueError(f"Need at least 30 samples, got {len(user_samples)}")
+    if len(user_samples) < 15:
+        raise ValueError(f"Need at least 15 samples, got {len(user_samples)}")
         
     X = np.array(user_samples)
     X_aug = augment_samples(X, n_augments=5)

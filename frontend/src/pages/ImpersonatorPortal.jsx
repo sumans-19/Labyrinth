@@ -68,12 +68,28 @@ export default function ImpersonatorPortal({ onNavigate }) {
             }).then(r => r.json()).then(score => {
                 window.dispatchEvent(new CustomEvent('irs-update', { detail: { ...score, command: cmd } }));
             });
+        } else if (cmd === 'whoami') {
+            newHistory.push({ type: 'info', text: 'admin_user' });
+        } else if (cmd === 'pwd') {
+            newHistory.push({ type: 'info', text: '/home/admin_user' });
+        } else if (cmd.startsWith('cd ')) {
+            newHistory.push({ type: 'info', text: '' });
+        } else if (cmd.startsWith('echo ')) {
+            newHistory.push({ type: 'info', text: cmd.substring(5) });
+        } else if (cmd === 'date') {
+            newHistory.push({ type: 'info', text: new Date().toString() });
+        } else if (cmd === 'uptime') {
+            newHistory.push({ type: 'info', text: 'up 14 days, 3:12, 2 users, load average: 0.14, 0.08, 0.01' });
+        } else if (cmd === 'id') {
+            newHistory.push({ type: 'info', text: 'uid=1000(admin_user) gid=1000(admin_user) groups=1000(admin_user),27(sudo)' });
+        } else if (cmd.startsWith('uname')) {
+            newHistory.push({ type: 'info', text: 'Linux prod-server 5.15.0-76-generic #83-Ubuntu SMP Wed Jun 21 20:23:31 UTC 2023 x86_64 GNU/Linux' });
+        } else if (cmd === 'ps') {
+            newHistory.push({ type: 'info', text: '  PID TTY          TIME CMD\n12435 pts/0    00:00:00 bash\n12480 pts/0    00:00:00 ps' });
+        } else if (cmd === 'ifconfig' || cmd === 'ip a') {
+            newHistory.push({ type: 'info', text: 'eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 10.60.226.205  netmask 255.255.240.0  broadcast 10.60.239.255' });
         } else {
-            // Normal command, capture logic handles event dispatch but let's pass the cmd name along
-            // We can't easily intercept KeystrokeCapture's dispatch here without modifying it,
-            // so KeystrokeCapture needs to just record keystrokes. But wait, KeystrokeCapture sends "event_type: keystroke".
-            // Since we want the timeline to show commands, let's just dispatch the command separately if we don't intercept it.
-            // Actually, we'll let KeystrokeCapture handle it, but we can also fire a placeholder event if we wanted.
+            // Normal command, capture logic handles event dispatch
             newHistory.push({ type: 'error', text: `command not found: ${cmd}` });
         }
 
@@ -109,34 +125,12 @@ export default function ImpersonatorPortal({ onNavigate }) {
                     <button 
                         onClick={() => {
                             fetch(`/api/impersonator/reset/${sessionId}/${userId}`, { method: 'POST' })
-                                .then(() => window.dispatchEvent(new CustomEvent('irs-update', { detail: { phase: 'LEARNING', progress: '0/30' } })));
+                                .then(() => window.dispatchEvent(new CustomEvent('irs-update', { detail: { phase: 'LEARNING', progress: '0/15' } })));
                             setConsoleHistory([]);
                         }}
                         className="btn-neon btn-neon-blue text-[10px] py-2"
                     >
                         RESET BASELINE
-                    </button>
-                    <button 
-                        onClick={() => {
-                            fetch('/api/impersonator/event', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    session_id: sessionId,
-                                    user_id: userId,
-                                    event_type: 'keystroke',
-                                    timestamp: Date.now(),
-                                    payload: {
-                                        keystrokes: Array(10).fill({ key: 'X', dwell: 400, flight: 600 })
-                                    }
-                                })
-                            }).then(r => r.json()).then(score => {
-                                window.dispatchEvent(new CustomEvent('irs-update', { detail: { ...score, command: 'SYNTHETIC_ANOMALY_PAYLOAD' } }));
-                            });
-                        }}
-                        className="btn-neon btn-neon-red text-[10px] py-2 flex items-center gap-2"
-                    >
-                        <ShieldAlert className="w-3.5 h-3.5" /> SYNTHETIC ATTACK
                     </button>
                 </div>
             </div>

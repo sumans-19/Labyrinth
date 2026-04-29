@@ -25,7 +25,7 @@ class ImpersonatorDetector:
                 samples = json.load(f)
                 self.sample_count = sum(1 for s in samples if s['user_id'] == self.user_id)
                 
-        if self.sample_count >= 30:
+        if self.sample_count >= 15:
             try:
                 self.scorer = RealTimeScorer(self.user_id)
             except Exception:
@@ -35,7 +35,7 @@ class ImpersonatorDetector:
         self.scorer = RealTimeScorer(self.user_id)
                 
     def is_learning_phase(self):
-        return self.sample_count < 30
+        return self.sample_count < 15
         
     def _extract_command_features(self, payload: dict) -> list:
         # Simplified for demo: mock 8 features

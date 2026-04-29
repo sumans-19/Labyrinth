@@ -17,7 +17,6 @@ const TABS = [
   { id: 'devsecops', label: 'Vulnerability Detector', icon: Code2 },
   { id: 'sentinel', label: 'Sentinel Sandbox', icon: Box },
   { id: 'internalthreat', label: 'Internal Threat', icon: ShieldAlert },
-  { id: 'impersonator', label: 'Impersonator', icon: UserCheck },
 ];
 
 export default function App() {
