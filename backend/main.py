@@ -46,9 +46,6 @@ import database
 from sentinel import router as sentinel_router
 from impersonator_detector import ImpersonatorDetector
 from behavioral_trainer import train_user_models
-from pydantic import BaseModel
-import asyncio
-import time
 
 
 import google.generativeai as genai
