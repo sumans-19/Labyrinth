@@ -9,6 +9,8 @@ const ROLES = [
     {
         id: 'cloud-dev',
         name: 'Cloud Developer',
+        userName: 'Alex Mercer',
+        uid: '44291-ALPHA',
         icon: Cloud,
         description: 'Infrastructure management and deployment pipelines.',
         authorized_tools: [
@@ -22,6 +24,8 @@ const ROLES = [
     {
         id: 'db-admin',
         name: 'Database Administrator',
+        userName: 'Sam Rivera',
+        uid: '44292-BETA',
         icon: Database,
         description: 'Maintaining production clusters and query optimization.',
         authorized_tools: [
@@ -35,6 +39,8 @@ const ROLES = [
     {
         id: 'sec-auditor',
         name: 'Security Auditor',
+        userName: 'Jordan Lee',
+        uid: '44293-GAMMA',
         icon: Shield,
         description: 'Compliance verification and vulnerability assessments.',
         authorized_tools: [
@@ -554,7 +560,7 @@ If a lateral movement alert is triggered by the Threat Engine, follow these step
         <div className="max-w-[1400px] mx-auto px-6 py-10 space-y-8 animate-fade-in relative">
             {/* Global Toast Notification */}
             {toastAlert && (
-                <div className="fixed bottom-10 right-10 z-50 animate-fade-in">
+                <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
                     <div className="glass-card p-4 border border-neon-red/50 bg-black/80 flex items-center gap-4 shadow-[0_0_20px_rgba(255,0,0,0.5)]">
                         <AlertTriangle className="w-8 h-8 text-neon-red animate-pulse" />
                         <div>
@@ -592,7 +598,9 @@ If a lateral movement alert is triggered by the Threat Engine, follow these step
                     </div>
                     <div className="px-4 py-2 bg-black/40 border border-white/5 rounded-lg flex items-center gap-3">
                         <Users className="w-4 h-4 text-gray-500" />
-                        <span className="text-[10px] font-mono text-gray-300 font-bold uppercase tracking-widest">UID: 44291-ALPHA</span>
+                        <span className="text-[10px] font-mono text-gray-300 font-bold uppercase tracking-widest">
+                            {selectedRole.userName} | UID: {selectedRole.uid}
+                        </span>
                     </div>
                 </div>
             </div>
