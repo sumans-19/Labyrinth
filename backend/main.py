@@ -173,12 +173,12 @@ async def submit_behavioral_event(event: BehavioralEvent):
         if not raw_cmd:
             raw_cmd = event.payload.get('files_accessed', [''])[0]
         detector.collect_sample(feature_vector, raw_command=raw_cmd)
-        if detector.sample_count == 30:
+        if detector.sample_count == 15:
             # Auto-train when learning phase just completed
             await asyncio.to_thread(train_user_models, event.user_id)
             detector.load_models()
             
-        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/30', 'irs': None}
+        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/15', 'irs': None}
         
     if not detector.scorer:
         return {'phase': 'ERROR', 'error': 'Model not trained', 'irs': None}
@@ -199,8 +199,8 @@ async def submit_behavioral_event(event: BehavioralEvent):
 async def get_impersonator_status(session_id: str, user_id: str):
     detector = get_or_create_detector(session_id, user_id)
     if detector.is_learning_phase():
-        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/30'}
-    return {'phase': 'MONITORING', 'progress': '30/30'}
+        return {'phase': 'LEARNING', 'progress': f'{detector.sample_count}/15'}
+    return {'phase': 'MONITORING', 'progress': '15/15'}
 
 @app.get('/api/impersonator/profile/{session_id}/{user_id}')
 async def get_impersonator_profile(session_id: str, user_id: str):
@@ -236,7 +236,7 @@ async def reset_impersonator(session_id: str, user_id: str):
     if os.path.exists(model_dir):
         shutil.rmtree(model_dir)
         
-    return {'status': 'reset', 'phase': 'LEARNING', 'progress': '0/30'}
+    return {'status': 'reset', 'phase': 'LEARNING', 'progress': '0/15'}
 
 @app.post('/api/impersonator/train/{session_id}/{user_id}')
 async def force_train_impersonator(session_id: str, user_id: str):
@@ -244,7 +244,7 @@ async def force_train_impersonator(session_id: str, user_id: str):
         await asyncio.to_thread(train_user_models, user_id)
         detector = get_or_create_detector(session_id, user_id)
         detector.load_models()
-        return {'status': 'trained', 'phase': 'MONITORING', 'progress': '30/30'}
+        return {'status': 'trained', 'phase': 'MONITORING', 'progress': '15/15'}
     except Exception as e:
         return {'status': 'error', 'message': str(e)}
 
@@ -258,7 +258,7 @@ async def get_impersonator_report_data(user_id: str):
             all_samples = json.load(f)
             samples = [s for s in all_samples if s.get('user_id') == user_id]
 
-    baseline_samples = samples[:30]
+    baseline_samples = samples[:15]
     result_data = []
     
     for s in baseline_samples:

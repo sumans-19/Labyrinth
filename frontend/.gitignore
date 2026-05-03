@@ -7,6 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+backend/decoys/honeytokens/config.json
+backend/honeytoken_registry.json
+
 node_modules
 dist
 dist-ssr
