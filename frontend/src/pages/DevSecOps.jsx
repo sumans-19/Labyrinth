@@ -174,11 +174,12 @@ function AttackChainVisual({ chain, mitigation }) {
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+export default function DevSecOps({ onNavigate }) {
     const [code, setCode] = useState('def vulnerable_function():\n    password = "hardcoded_secret"\n    cmd = input("Enter command: ")\n    import os\n    os.system(cmd)\n');
     const [expandedFinding, setExpandedFinding] = useState(null);
     const [copiedSource, setCopiedSource] = useState(false);
     const [language, setLanguage] = useState('python');
-    const [activeTab, setActiveTab] = useState('vulnerabilities'); // 'vulnerabilities' | 'fixed' | 'output' | 'attack'
+    const [activeTab, setActiveTab] = useState('vulnerabilities'); // 'vulnerabilities' | 'fixed'
 
     const [scanResults, setScanResults] = useState(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -186,29 +187,41 @@ function AttackChainVisual({ chain, mitigation }) {
     const [fixedCode, setFixedCode] = useState('');
     const [isFixing, setIsFixing] = useState(false);
     
-    // --- Restored State ---
-    const [execOutput, setExecOutput] = useState(null);
-    const [isExecuting, setIsExecuting] = useState(false);
-    const [liveAttackScript, setLiveAttackScript] = useState('');
-    const [isAttacking, setIsAttacking] = useState(false);
-    const [liveAttackOutput, setLiveAttackOutput] = useState(null);
-    const [fixedExecOutput, setFixedExecOutput] = useState(null);
-    
     const fileInputRef = useRef(null);
 
     const handleCopy = (text, type) => {
-        navigator.clipboard.writeText(text);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text);
+        } else {
+            // Fallback for non-secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
         if (type === 'source') { setCopiedSource(true); setTimeout(() => setCopiedSource(false), 2000); }
     };
 
     const autoDetectLanguage = (sourceCode) => {
-        if (sourceCode.includes('#include <stdio.h>') || sourceCode.includes('#include <stdlib.h>')) return 'c';
-        if (sourceCode.includes('#include <iostream>')) return 'cpp';
-        if (sourceCode.includes('public class ') || sourceCode.includes('import java.')) return 'java';
-        if (sourceCode.includes('def ') && sourceCode.includes(':')) return 'python';
-        return language;
+        if (sourceCode.includes('#include <stdio.h>') || sourceCode.includes('#include <stdlib.h>')) {
+            return 'c';
+        } else if (sourceCode.includes('#include <iostream>')) {
+            return 'cpp';
+        } else if (sourceCode.includes('public class ') || sourceCode.includes('import java.')) {
+            return 'java';
+        } else if (sourceCode.includes('def ') && sourceCode.includes(':')) {
+            return 'python';
+        }
+        return language; // default to whatever is selected
     };
 
+    // RUN removed — web server code cannot run inline
     const handleRunCode = async (codeToRun = code, isFixed = false) => {
         let currentLang = language;
         if (!isFixed) {
@@ -226,25 +239,30 @@ function AttackChainVisual({ chain, mitigation }) {
                 body: JSON.stringify({ code: codeToRun, language: currentLang }),
             });
             const data = await res.json();
-            if (isFixed) setFixedExecOutput(data);
-            else setExecOutput(data);
+            if (isFixed) {
+                setFixedExecOutput(data);
+            } else {
+                setExecOutput(data);
+            }
         } catch (err) {
             console.error("Execution error:", err);
             const errData = { output: "Connection to Sandbox Failed.", status: "error", execution_time: "0.000s" };
             if (isFixed) setFixedExecOutput(errData);
             else setExecOutput(errData);
         }
+        
         if (!isFixed) setIsExecuting(false);
     };
 
     const handleScan = async () => {
         const detectedLang = autoDetectLanguage(code);
         if (detectedLang !== language) setLanguage(detectedLang);
+        
         setIsScanning(true);
         setActiveTab('vulnerabilities');
         setScanResults(null);
         setExpandedFinding(null);
-        setFixedCode('');
+        setFixedCode(''); // Clear previous fix on new scan
         
         try {
             const res = await fetch('/api/scan', {
@@ -254,10 +272,33 @@ function AttackChainVisual({ chain, mitigation }) {
             });
             const data = await res.json();
             setScanResults(data);
+            // Do NOT auto-generate secure code here — user must click FIX
         } catch (err) {
             console.error("Scan Error:", err);
         }
         setIsScanning(false);
+    };
+
+    const handleSimulateExploit = async (vuln) => {
+        setIsSimulating(true);
+        setActiveTab('exploit');
+        try {
+            const res = await fetch('/api/exploit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    vulnerability_id: vuln.id, 
+                    vulnerability_type: vuln.type, 
+                    code_snippet: vuln.snippet, 
+                    line: vuln.line || 1 
+                }),
+            });
+            const data = await res.json();
+            setExploitSims(prev => ({ ...prev, [vuln.id]: data.simulation }));
+        } catch (err) {
+            setExploitSims(prev => ({ ...prev, [vuln.id]: "Exploit simulation failed to generate." }));
+        }
+        setIsSimulating(false);
     };
 
     const handleLiveAttack = async () => {
@@ -285,14 +326,17 @@ function AttackChainVisual({ chain, mitigation }) {
         setIsFixing(true);
         setActiveTab('fixed');
         setFixedCode('');
+        
         try {
+            // Call the dedicated /api/fix endpoint — uses Groq to generate full secure code
             const res = await fetch('/api/fix', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, language }),
             });
             const data = await res.json();
-            setFixedCode(data.secure_code || '');
+            const secureCode = data.secure_code || '';
+            setFixedCode(secureCode);
         } catch (err) {
             console.error("Fix Error:", err);
             setFixedCode(`# ERROR: Failed to generate secure code.\n# ${err.message}`);
@@ -302,10 +346,10 @@ function AttackChainVisual({ chain, mitigation }) {
 
     const handleApplyFix = () => {
         if (!fixedCode) return;
-        setCode(fixedCode);
-        setScanResults(null);
-        setFixedCode('');
-        setActiveTab('output');
+        setCode(fixedCode);          // Replace source editor with secure code
+        setScanResults(null);        // Clear old scan results
+        setFixedCode('');            // Clear secure code panel
+        setActiveTab('output');      // Switch back to output tab
         setFixedExecOutput(null);
     };
 
@@ -315,6 +359,7 @@ function AttackChainVisual({ chain, mitigation }) {
         const reader = new FileReader();
         reader.onload = (e) => {
             setCode(e.target.result);
+            // auto-detect basic extensions
             if(file.name.endsWith('.py')) setLanguage('python');
             if(file.name.endsWith('.js')) setLanguage('javascript');
             if(file.name.endsWith('.c')) setLanguage('c');
@@ -423,7 +468,7 @@ function AttackChainVisual({ chain, mitigation }) {
                             }}
                         />
                     </div>
-                    {/* Action Bar: SCAN · FIX · RUN */}
+                    {/* Action Bar: SCAN · FIX · COPY */}
                     <div className="p-4 border-t border-white/5 bg-black/60 shrink-0 grid grid-cols-3 gap-3">
                         <button 
                             onClick={handleScan}
@@ -435,29 +480,27 @@ function AttackChainVisual({ chain, mitigation }) {
                         <button 
                             onClick={handleFixCode}
                             disabled={isFixing || !scanResults || (scanResults && scanResults.findings_count === 0)}
-                            className="flex items-center justify-center gap-2 py-2 px-3 bg-neon-green/10 hover:bg-neon-green/20 border border-neon-green/30 text-neon-green rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all shadow-[0_0_15px_rgba(34,197,94,0.1)] disabled:opacity-50"
+                            title={!scanResults ? 'Run SCAN first' : scanResults.findings_count === 0 ? 'No vulnerabilities found' : 'Generate secure code with Groq AI'}
+                            className="flex items-center justify-center gap-2 py-2 px-3 bg-neon-green/10 hover:bg-neon-green/20 border border-neon-green/30 text-neon-green rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all shadow-[0_0_15px_rgba(34,197,94,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 fill-current" />} FIX
                         </button>
                         <button 
-                            onClick={() => handleRunCode()}
-                            disabled={isExecuting || !code.trim()}
+                            onClick={() => handleCopy(code, 'source')}
                             className="flex items-center justify-center gap-2 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded text-xs font-bold font-[Orbitron] tracking-wider transition-all"
                         >
-                            {isExecuting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} RUN
+                            {copiedSource ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} COPY
                         </button>
                     </div>
                 </div>
 
                 {/* ── RIGHT PANEL: OUTPUT & ANALYSIS ── */}
                 <div className="col-span-12 lg:col-span-6 flex flex-col h-full glass-card bg-[#0d111b]/80 border-white/5 shadow-2xl relative overflow-hidden">
-                    {/* Tabs: Vuln Report | Secure Code | Runtime Output | Live Attack */}
-                    <div className="flex items-center border-b border-white/5 bg-black/40 shrink-0 overflow-x-auto no-scrollbar">
+                    {/* Tabs: Vuln Report | Secure Code */}
+                    <div className="flex items-center border-b border-white/5 bg-black/40 shrink-0">
                         {[
                             { id: 'vulnerabilities', label: 'Vuln Report', icon: ShieldAlert },
-                            { id: 'fixed', label: 'Secure Code', icon: ShieldCheck },
-                            { id: 'output', label: 'Runtime Output', icon: Terminal },
-                            { id: 'attack', label: 'Live Attack', icon: Skull }
+                            { id: 'fixed', label: 'Secure Code', icon: ShieldCheck }
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -518,6 +561,7 @@ function AttackChainVisual({ chain, mitigation }) {
                                                             <Bug className="w-3 h-3" /> {expandedFinding === vuln.id ? 'Hide Attack Chain' : 'Show Attack Chain'}
                                                         </button>
 
+                                                        {/* Attack Chain Visual */}
                                                         {expandedFinding === vuln.id && (
                                                             <div className="mt-4">
                                                                 <AttackChainVisual chain={vuln.attack_chain} mitigation={vuln.mitigation} />
@@ -526,6 +570,11 @@ function AttackChainVisual({ chain, mitigation }) {
                                                     </div>
                                                 </div>
                                             ))}
+                                            {scanResults.findings.length === 0 && (
+                                                <div className="p-8 text-center text-neon-green font-mono text-xs border border-neon-green/20 bg-neon-green/5 rounded-lg">
+                                                    No vulnerabilities detected. Code appears secure.
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -541,14 +590,21 @@ function AttackChainVisual({ chain, mitigation }) {
                             <div className="p-0 h-full flex flex-col">
                                 {isFixing ? (
                                     <div className="flex-1 flex flex-col items-center justify-center gap-6">
+                                        {/* Minimal orbital animation */}
                                         <div className="relative w-20 h-20">
                                             <div className="absolute inset-0 rounded-full border-2 border-neon-green/20 animate-ping" style={{animationDuration:'2s'}} />
                                             <div className="absolute inset-2 rounded-full border border-neon-green/40 animate-spin" style={{animationDuration:'3s'}} />
+                                            <div className="absolute inset-4 rounded-full border border-neon-green/60 animate-spin" style={{animationDuration:'1.5s', animationDirection:'reverse'}} />
                                             <div className="absolute inset-0 flex items-center justify-center">
                                                 <ShieldCheck className="w-6 h-6 text-neon-green" />
                                             </div>
                                         </div>
-                                        <p className="font-mono text-xs text-neon-green animate-pulse">GENERATING SECURE VERSION...</p>
+                                        <div className="flex gap-1.5">
+                                            {[0,1,2,3,4].map(i => (
+                                                <div key={i} className="w-1 h-4 bg-neon-green/60 rounded-full animate-pulse"
+                                                    style={{animationDelay:`${i*0.15}s`, animationDuration:'1s'}} />
+                                            ))}
+                                        </div>
                                     </div>
                                 ) : fixedCode ? (
                                     <div className="flex flex-col h-full">
@@ -557,115 +613,53 @@ function AttackChainVisual({ chain, mitigation }) {
                                                 <ShieldCheck className="w-4 h-4" /> Remediated Code
                                             </span>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={handleApplyFix} className="flex items-center gap-2 px-3 py-1.5 bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 text-neon-green rounded text-[10px] font-[Orbitron] tracking-widest uppercase transition-colors font-bold shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                                                <button 
+                                                    onClick={handleApplyFix}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 text-neon-green rounded text-[10px] font-[Orbitron] tracking-widest uppercase transition-colors font-bold shadow-[0_0_10px_rgba(34,197,94,0.2)]"
+                                                    title="Replace source editor with this secure code"
+                                                >
                                                     <Check className="w-3 h-3" /> APPLY
                                                 </button>
-                                                <button onClick={downloadFixedCode} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded text-[10px] font-mono tracking-widest uppercase transition-colors">
+                                                <button 
+                                                    onClick={downloadFixedCode}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded text-[10px] font-mono tracking-widest uppercase transition-colors"
+                                                >
                                                     <Download className="w-3 h-3" /> Download
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex-1 border-b border-white/5">
                                             <Editor
                                                 height="100%"
                                                 language={language}
                                                 theme="vs-dark"
                                                 value={fixedCode}
-                                                options={{ readOnly: true, minimap: { enabled: false }, fontSize: 13 }}
+                                                options={{
+                                                    readOnly: true,
+                                                    minimap: { enabled: false },
+                                                    fontSize: 13,
+                                                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                                                    scrollBeyondLastLine: false,
+                                                }}
                                             />
+                                        </div>
+                                        <div className="p-3 bg-[#05080f] border-t border-white/5 shrink-0">
+                                            <p className="text-[10px] text-gray-500 font-mono text-center">
+                                                Click <span className="text-neon-green font-bold">APPLY</span> to replace the source editor with this secure code
+                                            </p>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-600">
                                         <ShieldCheck className="w-10 h-10 opacity-20" />
-                                        <p className="font-mono text-xs uppercase tracking-widest">Scan code first, then click FIX</p>
+                                        <p className="font-mono text-xs uppercase tracking-widest">Scan code first, then click FIX to generate secure code</p>
                                     </div>
                                 )}
                             </div>
                         )}
-
-                        {/* Runtime Output */}
-                        {activeTab === 'output' && (
-                            <div className="p-6 h-full font-mono text-xs flex flex-col">
-                                <div className="mb-4 flex items-center gap-2 text-neon-blue opacity-50">
-                                    <Terminal className="w-3 h-3" /> <span>SANDBOX_OUTPUT</span>
-                                </div>
-                                <div className="flex-1 bg-black/40 rounded-lg border border-white/5 p-4 overflow-y-auto no-scrollbar whitespace-pre-wrap leading-relaxed">
-                                    {isExecuting ? (
-                                        <div className="flex items-center gap-3 text-gray-500 italic animate-pulse">
-                                            <Loader2 className="w-3 h-3 animate-spin" /> Spawning isolated environment...
-                                        </div>
-                                    ) : execOutput ? (
-                                        <div className={execOutput.status === 'error' ? 'text-red-400' : 'text-gray-300'}>
-                                            {execOutput.output}
-                                            <div className="mt-4 pt-4 border-t border-white/5 text-[10px] text-gray-600 flex gap-4">
-                                                <span>STATUS: {execOutput.status.toUpperCase()}</span>
-                                                <span>TIME: {execOutput.execution_time}</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <span className="text-gray-700 italic">No output yet. Click RUN to execute the code in a sandbox.</span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Live Attack */}
-                        {activeTab === 'attack' && (
-                            <div className="p-6 h-full flex flex-col">
-                                <div className="mb-6 flex flex-col gap-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black font-[Orbitron] text-red-500 tracking-[0.3em] uppercase">Exploit Simulation</span>
-                                        <span className="text-[9px] font-mono text-gray-600 uppercase">Interactive Breach Test</span>
-                                    </div>
-                                    <div className="relative group">
-                                        <div className="absolute -inset-0.5 bg-red-500/20 rounded-lg blur opacity-50 group-hover:opacity-75 transition duration-500"></div>
-                                        <textarea
-                                            value={liveAttackScript}
-                                            onChange={(e) => setLiveAttackScript(e.target.value)}
-                                            placeholder="Enter exploit payload or script here (e.g. cat /etc/passwd)..."
-                                            className="relative w-full h-32 bg-[#05080f] border border-red-500/30 rounded-lg p-4 font-mono text-xs text-red-400 placeholder-red-900/50 outline-none focus:border-red-500 transition-colors resize-none"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={handleLiveAttack}
-                                        disabled={isAttacking || !liveAttackScript.trim()}
-                                        className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 rounded text-xs font-bold font-[Orbitron] tracking-widest uppercase transition-all flex items-center justify-center gap-3 group disabled:opacity-30 shadow-[0_0_20px_rgba(239,68,68,0.1)]"
-                                    >
-                                        {isAttacking ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Skull className="w-4 h-4 group-hover:animate-bounce" /> Execute Attack</>}
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 flex flex-col min-h-0 bg-black/40 rounded-lg border border-red-500/10 p-4 font-mono text-[11px]">
-                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-red-500/10">
-                                        <div className="flex items-center gap-2 text-red-400">
-                                            <Terminal className="w-3.5 h-3.5" /> <span className="font-bold tracking-widest uppercase">Breach_Terminal</span>
-                                        </div>
-                                        <div className="flex gap-1.5">
-                                            <div className="w-2 h-2 rounded-full bg-red-500/20" />
-                                            <div className="w-2 h-2 rounded-full bg-red-500/40" />
-                                            <div className="w-2 h-2 rounded-full bg-red-500/60" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto no-scrollbar text-red-500/80 leading-relaxed italic">
-                                        {isAttacking ? (
-                                            <div className="animate-pulse">Injecting payload... awaiting response from target...</div>
-                                        ) : liveAttackOutput ? (
-                                            <div className="animate-fade-in not-italic font-bold">
-                                                {liveAttackOutput}
-                                            </div>
-                                        ) : (
-                                            <div className="text-red-900/40">Simulation dormant. Waiting for exploit execution.</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                     </div>
                 </div>
             </div>
         </div>
     );
 }
-

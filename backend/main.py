@@ -35,7 +35,6 @@ from fastapi.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from behavioral_trainer import train_user_models
-from behavioral_trainer import train_user_models
 from honeypot import HoneypotSession, DEMO_COMMANDS, DAVE_MESSAGE, KILL_CHAIN_PHASES, PDFReportHandler, shield_ai
 from ml_ensemble import ensemble as ml_ensemble_instance
 from live_ml_bridge import run_ensemble_analysis, build_command_telemetry
@@ -71,12 +70,10 @@ main_loop = None
 async def lifespan(app):
     global main_loop
     main_loop = asyncio.get_running_loop()
-    # Start SSH Honeypot in background
-    print("[*] Initializing SSH Honeypot...")
+    print("[*] Lifespan: Initializing background services...")
     
     def thread_safe_broadcast(message):
         if main_loop:
-            # Create task instead of run_coroutine_threadsafe to avoid some threading edge cases in uvicorn
             main_loop.call_soon_threadsafe(
                 lambda: asyncio.create_task(broadcast_to_monitors(message))
             )
@@ -84,20 +81,24 @@ async def lifespan(app):
             print("[!] Broadcast failed: main_loop not initialized")
         
     try:
+        print("[*] Lifespan: Starting SSH Honeypot on port 2222...")
         start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+        
+        print("[*] Lifespan: Starting Raw TCP Honeypot on port 8888...")
         start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
-        print("[*] Honeypots (SSH:2222, TCP:8888) listening on 0.0.0.0")
-    except Exception as e:
-        print(f"[!] Honeypot startup error (non-fatal): {e}")
-    
-    try:
+        
         from lateral_interceptor import token_manager
-        # Generate honeytoken decoy files on startup using the shared instance
+        print("[*] Lifespan: Generating honeytoken decoys...")
         token_manager.create_decoy_files()
+        
+        print("[*] Lifespan: Background services started successfully.")
     except Exception as e:
-        print(f"[!] Honeytoken creation failed: {e}")
+        print(f"[!] Lifespan Error: {e}")
+        import traceback
+        traceback.print_exc()
+
     yield  # Application runs
-    # Shutdown logic (if any) goes here
+    print("[*] Lifespan: Shutting down...")
 
 app = FastAPI(title="Labyrinth Forge — DevSecOps Shield v2.0", version="2.0.0", lifespan=lifespan)
 
@@ -646,12 +647,16 @@ def switch_mode(req: ModeRequest):
 
 @app.post("/api/scan")
 def scan_endpoint(req: ScanRequest):
-    """Hybrid Detection: Deterministic Baseline + AI Deep Reasoning."""
-    from scanner import scan_code
-    return scan_code(req.code, req.language)
+    """Step 1: Detect vulnerabilities using Local ML → Groq fallback. Returns findings only."""
+    from scanner import scan_code_findings_only
+    return scan_code_findings_only(req.code, req.language)
+
+class FixRequest(BaseModel):
+    code: str
+    language: str = "python"
 
 @app.post("/api/fix")
-def fix_endpoint(req: ScanRequest):
+def fix_endpoint(req: FixRequest):
     """Step 2: Generate fully secure code using Groq AI, then cache its hash."""
     from devsecops_shield.ai_remediator import call_groq_api
     from scanner import register_secure_code
@@ -864,6 +869,33 @@ def get_report(session_id: str):
     if not session:
         return {"error": "Session not found"}
     return session.generate_report()
+
+# ── Neural Ensemble API ───────────────────────────
+@app.get("/api/ensemble/status")
+def get_ensemble_status():
+    return {"trained": ml_ensemble_instance.trained}
+
+@app.post("/api/ensemble/train")
+async def train_ensemble():
+    try:
+        # Run training in a thread to not block the event loop
+        result = await asyncio.to_thread(ml_ensemble_instance.train_all)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ensemble/evaluate")
+def evaluate_ensemble():
+    from ml_ensemble import get_full_report
+    return get_full_report()
+
+@app.post("/api/ensemble/predict")
+async def predict_ensemble(features: Dict[str, float]):
+    try:
+        result = await asyncio.to_thread(ml_ensemble_instance.predict, features)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/decoys")
 def get_decoys():
@@ -1367,4 +1399,4 @@ async def save_fingerprint(request: FingerprintSaveRequest):
 if __name__ == "__main__":
     import uvicorn
     # Disable auto-reload on Windows to avoid WinError 10013 on restricted ports.
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)

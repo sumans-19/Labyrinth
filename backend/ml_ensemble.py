@@ -125,8 +125,8 @@ class LabyrinthEnsemble:
 
         # ── 1. Isolation Forest ────────────────────────────────
         print("\n[1/3] Isolation Forest (Unsupervised Anomaly Detection)")
-        for ep in range(1, 11):
-            m = IsolationForest(n_estimators=ep * 10, contamination=0.3, random_state=42)
+        for ep in range(1, 6):
+            m = IsolationForest(n_estimators=ep * 20, contamination=0.3, random_state=42)
             m.fit(X_tr_s)
             preds = (m.predict(X_te_s) == -1).astype(int)
             acc = accuracy_score(y_te, preds)
@@ -134,7 +134,7 @@ class LabyrinthEnsemble:
                 'model': 'Isolation Forest', 'epoch': ep,
                 'accuracy': round(acc * 100, 2), 'loss': round(1 - acc, 4)
             })
-            print(f"  Epoch {ep:>2}/10  Trees: {ep*10:>3}  Acc: {acc*100:6.2f}%")
+            print(f"  Epoch {ep:>2}/5  Trees: {ep*20:>3}  Acc: {acc*100:6.2f}%")
 
         self.iso_forest = IsolationForest(n_estimators=100, contamination=0.3, random_state=42)
         self.iso_forest.fit(X_tr_s)
@@ -143,15 +143,15 @@ class LabyrinthEnsemble:
 
         # ── 2. Gradient Boosting ───────────────────────────────
         print("\n[2/3] Gradient Boosting Classifier (XGBoost-style)")
-        for ep in range(1, 11):
-            m = GradientBoostingClassifier(n_estimators=ep * 10, max_depth=5, learning_rate=0.1, random_state=42)
+        for ep in range(1, 6):
+            m = GradientBoostingClassifier(n_estimators=ep * 20, max_depth=5, learning_rate=0.1, random_state=42)
             m.fit(X_tr_s, y_tr)
             acc = m.score(X_te_s, y_te)
             self.training_history.append({
                 'model': 'XGBoost', 'epoch': ep,
                 'accuracy': round(acc * 100, 2), 'loss': round(1 - acc, 4)
             })
-            print(f"  Epoch {ep:>2}/10  Est: {ep*10:>3}  Acc: {acc*100:6.2f}%  Loss: {1-acc:.4f}")
+            print(f"  Epoch {ep:>2}/5  Est: {ep*20:>3}  Acc: {acc*100:6.2f}%  Loss: {1-acc:.4f}")
 
         self.gb_classifier = GradientBoostingClassifier(
             n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42
@@ -180,8 +180,8 @@ class LabyrinthEnsemble:
 
         # ── 3. Frustration Regressor ───────────────────────────
         print("\n[3/3] Frustration Index Regressor")
-        for ep in range(1, 11):
-            n = max(10, int(len(X_tr_s) * (ep / 10)))
+        for ep in range(1, 6):
+            n = max(10, int(len(X_tr_s) * (ep / 5)))
             reg = LinearRegression()
             reg.fit(X_tr_s[:n], yf_tr[:n])
             r2 = reg.score(X_te_s, yf_te)
@@ -190,7 +190,7 @@ class LabyrinthEnsemble:
                 'model': 'Frustration Regressor', 'epoch': ep,
                 'accuracy': round(r2 * 100, 2), 'loss': round(mse / 100, 4)
             })
-            print(f"  Epoch {ep:>2}/10  Samples: {n:>3}  R²: {r2*100:6.2f}%  MSE: {mse:.2f}")
+            print(f"  Epoch {ep:>2}/5  Samples: {n:>3}  R²: {r2*100:6.2f}%  MSE: {mse:.2f}")
 
         self.frust_regressor = LinearRegression()
         self.frust_regressor.fit(X_tr_s, yf_tr)

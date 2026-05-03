@@ -1,0 +1,6 @@
+{
+    "AWS_ACCESS_KEY_ID": "AKIA81A64A374AEE40A2",
+    "AWS_SECRET_ACCESS_KEY": "4f96dede0dcf400f9c597bd71d0550459ec8811e",
+    "MONGODB_URI": "mongodb+srv://admin:f019fd463399@cluster0.mongodb.net/prod-db?retryWrites=true&w=majority",
+    "INTERNAL_API_TOKEN": "internal_auth_c5fbbc1e28f34d45934869cbc1155a11"
+}
