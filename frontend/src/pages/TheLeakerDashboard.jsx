@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Download, Target, ChevronLeft, ShieldAlert, FileText, Server, HardDrive, Key, Copy, Check, Database, MapPin, ArrowRight, Globe, AlertTriangle, Smartphone, Laptop, RefreshCw, Fingerprint } from 'lucide-react';
+import { getBackendHttpBase, getBackendWsBase } from '../utils/runtime';
 
 export default function TheLeakerDashboard({ onNavigate }) {
     const [internalThreats, setInternalThreats] = useState([]);
@@ -16,7 +17,7 @@ export default function TheLeakerDashboard({ onNavigate }) {
     useEffect(() => {
         const fetchDecoys = async () => {
             try {
-                const response = await fetch(`http://${window.location.hostname}:8000/api/decoys`);
+                const response = await fetch(`${getBackendHttpBase()}/api/decoys`);
                 const data = await response.json();
                 setDecoys(data.files || []);
             } catch (error) {
@@ -28,9 +29,7 @@ export default function TheLeakerDashboard({ onNavigate }) {
 
     // Establish WebSocket Connection for Alert listener
     useEffect(() => {
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = window.location.hostname + ':8000';
-        const ws = new WebSocket(`${protocol}://${host}/ws/monitor`);
+        const ws = new WebSocket(`${getBackendWsBase()}/ws/monitor`);
         wsRef.current = ws;
 
         ws.onopen = () => console.log("Leaker Dashboard WS connected");
@@ -60,14 +59,14 @@ export default function TheLeakerDashboard({ onNavigate }) {
     }, []);
 
     const copyToClipboard = (docName) => {
-        const tripwireUrl = `http://${window.location.hostname}:8000/api/honeytoken/${encodeURIComponent(docName)}`;
+        const tripwireUrl = `${getBackendHttpBase()}/api/honeytoken/${encodeURIComponent(docName)}`;
         navigator.clipboard.writeText(tripwireUrl);
         setCopiedUrl(docName);
         setTimeout(() => setCopiedUrl(null), 2000);
     };
 
     const copyGhostPixel = (docName) => {
-        const pixelUrl = `http://${window.location.hostname}:8000/api/v1/ghost-pixel/${encodeURIComponent(docName)}`;
+        const pixelUrl = `${getBackendHttpBase()}/api/v1/ghost-pixel/${encodeURIComponent(docName)}`;
         const imgTag = `<img src="${pixelUrl}" style="display:none;" />`;
         navigator.clipboard.writeText(imgTag);
         setCopiedUrl(docName + "_pixel");
@@ -75,14 +74,14 @@ export default function TheLeakerDashboard({ onNavigate }) {
     };
 
     const handleDownload = (fileName) => {
-        const downloadUrl = `http://${window.location.hostname}:8000/api/download/${encodeURIComponent(fileName)}`;
+        const downloadUrl = `${getBackendHttpBase()}/api/download/${encodeURIComponent(fileName)}`;
         window.open(downloadUrl, '_blank');
     };
 
     const handleGenerateAndDownload = async () => {
         setIsGenerating(true);
         try {
-            const response = await fetch(`http://${window.location.hostname}:8000/api/v1/generate-decoy`, {
+            const response = await fetch(`${getBackendHttpBase()}/api/v1/generate-decoy`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -92,7 +91,7 @@ export default function TheLeakerDashboard({ onNavigate }) {
             });
             const data = await response.json();
             if (data.download_url) {
-                window.open(`http://${window.location.hostname}:8000${data.download_url}`, '_blank');
+                window.open(`${getBackendHttpBase()}${data.download_url}`, '_blank');
             }
         } catch (error) {
             console.error("Generation failed:", error);

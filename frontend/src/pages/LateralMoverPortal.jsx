@@ -4,6 +4,8 @@ import {
     AlertTriangle, Server, Key, ArrowLeft, ArrowRight,
     Activity, Globe, Search, RefreshCw, Folder, FileText
 } from 'lucide-react';
+import { getBackendHttpBase } from '../utils/runtime';
+
 
 const ROLES = [
     {
@@ -86,7 +88,7 @@ export default function LateralMoverPortal({ onNavigate }) {
         setAlert(null);
 
         try {
-            const registryRes = await fetch(`http://${window.location.hostname}:8000/api/decoys/honeytokens`);
+            const registryRes = await fetch(`${getBackendHttpBase()}/api/decoys/honeytokens`);
             
             if (!registryRes.ok) {
                 if (registryRes.status === 403) {
@@ -117,7 +119,7 @@ export default function LateralMoverPortal({ onNavigate }) {
                 headers: {}
             };
 
-            const url = `http://${window.location.hostname}:8000${token.endpoint}`;
+            const url = `${getBackendHttpBase()}${token.endpoint}`;
 
             if (token.auth_header === 'Authorization') {
                 fetchOptions.headers['Authorization'] = `Bearer ${tokenValue}`;
@@ -473,7 +475,7 @@ If a lateral movement alert is triggered by the Threat Engine, follow these step
                 });
                 
                 // Trigger backend alert
-                fetch(`http://${window.location.hostname}:8000/api/v1/internal/file-access`, {
+                fetch(`${getBackendHttpBase()}/api/v1/internal/file-access`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ filename: fileName, role: selectedRole.id })

@@ -1,4 +1,7 @@
+import { getBackendHttpBase } from './runtime';
+
 export class KeystrokeCapture {
+
     constructor(sessionId, userId, onScoreUpdate) {
         this.sessionId = sessionId;
         this.userId = userId;
@@ -63,7 +66,7 @@ export class KeystrokeCapture {
         this.lastCapturedCommand = '';
         
         try {
-            const response = await fetch('/api/impersonator/event', {
+            const response = await fetch(`${getBackendHttpBase()}/api/impersonator/event`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

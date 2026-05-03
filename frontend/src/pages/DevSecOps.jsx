@@ -7,6 +7,8 @@ import {
     X, Check, Settings, Upload, Play, Download, Trash2, FileCode2,
     Lock, AlertCircle, User, Server, Skull, Target, Eye, Database, Box
 } from 'lucide-react';
+import { getBackendHttpBase } from '../utils/runtime';
+
 
 // ── Phase config (dynamic — any phase name works) ─────────────────────────────
 const PHASE_CFG = {
@@ -233,7 +235,7 @@ export default function DevSecOps({ onNavigate }) {
         }
         
         try {
-            const res = await fetch('/api/execute', {
+            const res = await fetch(`${getBackendHttpBase()}/api/execute`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: codeToRun, language: currentLang }),
@@ -265,7 +267,7 @@ export default function DevSecOps({ onNavigate }) {
         setFixedCode(''); // Clear previous fix on new scan
         
         try {
-            const res = await fetch('/api/scan', {
+            const res = await fetch(`${getBackendHttpBase()}/api/scan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, language: detectedLang }),
@@ -283,7 +285,7 @@ export default function DevSecOps({ onNavigate }) {
         setIsSimulating(true);
         setActiveTab('exploit');
         try {
-            const res = await fetch('/api/exploit', {
+            const res = await fetch(`${getBackendHttpBase()}/api/exploit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -306,7 +308,7 @@ export default function DevSecOps({ onNavigate }) {
         setIsAttacking(true);
         setLiveAttackOutput(null);
         try {
-            const res = await fetch('/api/live_attack', {
+            const res = await fetch(`${getBackendHttpBase()}/api/live_attack`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -329,7 +331,7 @@ export default function DevSecOps({ onNavigate }) {
         
         try {
             // Call the dedicated /api/fix endpoint — uses Groq to generate full secure code
-            const res = await fetch('/api/fix', {
+            const res = await fetch(`${getBackendHttpBase()}/api/fix`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, language }),

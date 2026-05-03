@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Terminal, Cpu, UserX, ShieldAlert } from 'lucide-react';
 import ImpersonatorPanel from '../components/impersonator/ImpersonatorPanel';
 import { KeystrokeCapture } from '../utils/KeystrokeCapture';
+import { getBackendHttpBase } from '../utils/runtime';
 
 export default function ImpersonatorPortal({ onNavigate }) {
     const [consoleHistory, setConsoleHistory] = useState([
@@ -55,7 +56,7 @@ export default function ImpersonatorPortal({ onNavigate }) {
             newHistory.push({ type: 'info', text: `Opening ${file}...` });
             
             // If they access decoy, notify backend
-            fetch('/api/impersonator/event', {
+            fetch(`${getBackendHttpBase()}/api/impersonator/event`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -124,7 +125,7 @@ export default function ImpersonatorPortal({ onNavigate }) {
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={() => {
-                            fetch(`/api/impersonator/reset/${sessionId}/${userId}`, { method: 'POST' })
+                            fetch(`${getBackendHttpBase()}/api/impersonator/reset/${sessionId}/${userId}`, { method: 'POST' })
                                 .then(() => window.dispatchEvent(new CustomEvent('irs-update', { detail: { phase: 'LEARNING', progress: '0/15' } })));
                             setConsoleHistory([]);
                         }}

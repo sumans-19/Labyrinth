@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, BrainCircuit, ShieldAlert, Target, Crosshair } from 'lucide-react';
+import { getBackendHttpBase } from '../utils/runtime';
+
 
 export default function MLAnalyticsPanel({ profile, commands, active }) {
     const [mlState, setMlState] = useState({
@@ -37,10 +39,7 @@ export default function MLAnalyticsPanel({ profile, commands, active }) {
         const fetchMLData = async () => {
             setLoading(true);
             try {
-                // Adjust fetch path according to proxy or explicit host
-                const host = window.location.hostname + (window.location.port ? ':8000' : '');
-                const url = window.location.protocol === 'https:' ? `https://${host}` : `http://${host}`;
-                const response = await fetch(`${url}/api/ml/analyze-session`, {
+                const response = await fetch(`${getBackendHttpBase()}/api/ml/analyze-session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

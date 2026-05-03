@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Activity, Cpu, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { getBackendHttpBase } from '../../utils/runtime';
+
 
 const ImpersonatorPanel = ({ sessionId, userId }) => {
     const [status, setStatus] = useState({ phase: 'LEARNING', progress: '0/15' });
@@ -14,12 +16,12 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
 
     useEffect(() => {
         // Initial status check
-        fetch(`/api/impersonator/status/${sessionId}/${userId}`)
+        fetch(`${getBackendHttpBase()}/api/impersonator/status/${sessionId}/${userId}`)
             .then(res => res.json())
             .then(data => {
                 setStatus(data);
                 if (data.phase === 'MONITORING') {
-                    fetch(`/api/impersonator/profile/${sessionId}/${userId}`)
+                    fetch(`${getBackendHttpBase()}/api/impersonator/profile/${sessionId}/${userId}`)
                         .then(r => r.json())
                         .then(p => setProfileData(p))
                         .catch(() => {});
@@ -35,7 +37,7 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
             } else {
                 if (status.phase === 'LEARNING') {
                     // Just switched to monitoring, fetch profile
-                    fetch(`/api/impersonator/profile/${sessionId}/${userId}`)
+                    fetch(`${getBackendHttpBase()}/api/impersonator/profile/${sessionId}/${userId}`)
                         .then(r => r.json())
                         .then(p => setProfileData(p))
                         .catch(() => {});
@@ -63,7 +65,7 @@ const ImpersonatorPanel = ({ sessionId, userId }) => {
     const generatePdf = async () => {
         setIsGeneratingPdf(true);
         try {
-            const res = await fetch(`/api/impersonator/report/${userId}`);
+            const res = await fetch(`${getBackendHttpBase()}/api/impersonator/report/${userId}`);
             const json = await res.json();
             if (json.status === 'success') {
                 setPdfData(json.data);

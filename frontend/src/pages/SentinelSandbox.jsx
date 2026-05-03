@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Terminal, Activity, ShieldAlert, CheckCircle, Shield, XCircle, Code, Loader } from 'lucide-react';
 import CyberCorner from '../components/CyberCorner';
+import { getBackendWsBase } from '../utils/runtime';
+
 
 export default function SentinelSandbox() {
   const [sourceUrl, setSourceUrl] = useState('');
@@ -24,10 +26,7 @@ export default function SentinelSandbox() {
     setStatus('INITIALIZING');
 
     // Make sure we connect via correct protocol (ws vs wss)
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use window.location.hostname for robustness, defaulting to port 8000
-    const host = window.location.hostname || 'localhost';
-    const wsUrl = `${protocol}//${host}:8000/ws/sentinel`;
+    const wsUrl = `${getBackendWsBase()}/ws/sentinel`;
     
     const socket = new WebSocket(wsUrl);
 

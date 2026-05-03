@@ -10,7 +10,9 @@ import {
   RadialBarChart, RadialBar, Legend, Cell
 } from 'recharts';
 
-const API = `http://${window.location.hostname}:8000`;
+import { getBackendHttpBase } from '../utils/runtime';
+
+const API = getBackendHttpBase();
 
 const NEON = {
   blue: '#3b82f6', purple: '#a855f7', green: '#22c55e',

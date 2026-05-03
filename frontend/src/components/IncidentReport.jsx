@@ -1,5 +1,7 @@
 import { FileText, Download, Clock, Shield, Crosshair, AlertTriangle, CheckCircle2, Activity, BarChart3, Fingerprint, Database } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
+import { getBackendHttpBase } from '../utils/runtime';
+
 
 function formatTimestamp(ts) {
     if (!ts) return '--';
@@ -33,7 +35,7 @@ export default function IncidentReport({ report }) {
     const downloadReport = async () => {
         try {
             console.log('Generating PDF from report data statelessly...');
-            const response = await fetch('/api/report/generate', {
+            const response = await fetch(`${getBackendHttpBase()}/api/report/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(report),
@@ -246,7 +248,7 @@ export default function IncidentReport({ report }) {
                                     btn.innerHTML = '<span class="animate-pulse">SYNCHRONIZING WITH DB...</span>';
                                     
                                     try {
-                                        const resp = await fetch(`http://${window.location.hostname}:8000/api/v1/fingerprint/save`, {
+                                        const resp = await fetch(`${getBackendHttpBase()}/api/v1/fingerprint/save`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
