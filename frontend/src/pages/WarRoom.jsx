@@ -268,9 +268,14 @@ export default function WarRoom() {
                     return;
                 }
                 const data = await response.json();
+                
+                // If we are on Vercel/Production, we want to share the current URL
+                // If on Localhost, we want the LAN IP URL from the backend
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                
                 setShareInfo({
-                    attacker_console_url: data.attacker_console_url || getAttackerConsoleUrl(),
-                    dashboard_url: data.dashboard_url || window.location.href,
+                    attacker_console_url: isLocal ? (data.attacker_console_url || getAttackerConsoleUrl()) : getAttackerConsoleUrl(),
+                    dashboard_url: isLocal ? (data.dashboard_url || window.location.href) : window.location.href,
                     lan_ip: data.lan_ip || window.location.hostname || 'localhost',
                     ssh_command: data.ssh_command || `ssh root@${data.lan_ip} -p 2222`,
                     raw_port_command: data.raw_port_command || `nc ${data.lan_ip} 8080`,
