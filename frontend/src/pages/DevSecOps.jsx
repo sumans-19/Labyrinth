@@ -395,19 +395,19 @@ export default function DevSecOps({ onNavigate }) {
     };
 
     return (
-        <div className="max-w-[1600px] mx-auto px-6 py-6 animate-fade-in lg:px-8 h-[calc(100vh-64px)] flex flex-col">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 animate-fade-in lg:px-8 min-h-[calc(100vh-64px)] flex flex-col">
             {/* Header Section */}
-            <div className="flex items-center justify-between mb-6 shrink-0">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 shrink-0 gap-4">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-neon-blue/10 border border-neon-blue/20 rounded-xl">
-                        <Lock className="w-8 h-8 text-neon-blue" />
+                    <div className="p-2 sm:p-3 bg-neon-blue/10 border border-neon-blue/20 rounded-xl">
+                        <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-neon-blue" />
                     </div>
                     <div>
-                        <h1 className="font-[Orbitron] text-3xl font-black text-white tracking-widest uppercase">Vulnerability Detector</h1>
-                        <p className="text-xs text-gray-500 font-mono tracking-widest uppercase mt-1">Deterministic Vulnerability Analysis &amp; Remediation</p>
+                        <h1 className="font-[Orbitron] text-xl sm:text-2xl md:text-3xl font-black text-white tracking-widest uppercase">Vulnerability Detector</h1>
+                        <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase mt-1">Deterministic Vulnerability Analysis &amp; Remediation</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <div className="flex flex-col items-end mr-6">
                         <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">Hardening Mode</span>
                         <span className="text-xs font-bold text-neon-green font-[Orbitron] tracking-widest flex items-center gap-2">ACTIVE <Activity className="w-3 h-3" /></span>
@@ -424,7 +424,7 @@ export default function DevSecOps({ onNavigate }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-8 h-[calc(100vh-140px)] min-h-[700px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-[700px]">
                 {/* ── LEFT PANEL: CODE INPUT ── */}
                 <div className="col-span-12 lg:col-span-6 flex flex-col h-full glass-card bg-[#0d111b]/80 border-white/5 relative overflow-hidden shadow-2xl">
                     <div className="px-4 py-3 border-b border-white/5 bg-black/40 flex justify-between items-center shrink-0">

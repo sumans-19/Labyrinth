@@ -153,7 +153,7 @@ export default function IncidentReport({ report }) {
                         <BarChart3 className="w-2.5 h-2.5 text-neon-cyan" />
                         <span className="text-[8px] font-mono text-neon-cyan uppercase">Threat Waveform</span>
                     </div>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={60}>
                         <AreaChart data={timeline.slice(-10).map((t, i) => ({ val: t.risk_score, i }))}>
                             <Area
                                 type="monotone"

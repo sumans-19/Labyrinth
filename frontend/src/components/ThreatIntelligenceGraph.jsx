@@ -65,8 +65,8 @@ export default function ThreatIntelligenceGraph({ profile, commands }) {
             </div>
 
             {/* Graph Content */}
-            <div className="flex-1 p-2 pt-4" style={{ minHeight: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="flex-1 p-2 pt-4 min-h-[220px]">
+                <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                     <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorIntensity" x1="0" y1="0" x2="0" y2="1">

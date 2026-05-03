@@ -139,12 +139,14 @@ export default function WarRoom() {
 
         ws.onclose = () => {
             setLiveActive(false);
-            setDeceptionPhase('Monitor disconnected. Reconnecting...');
-            setTimeout(() => {
-                if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-                    startLiveMonitor();
-                }
-            }, 3000);
+            if (wsRef.current) {
+                setDeceptionPhase('Monitor disconnected. Reconnecting...');
+                setTimeout(() => {
+                    if (wsRef.current === ws) { // Ensure we don't start multiple if one is already starting
+                        startLiveMonitor();
+                    }
+                }, 5000);
+            }
         };
     }, []);
 
@@ -282,29 +284,33 @@ export default function WarRoom() {
     }, []);
 
     return (
-        <div className="container-responsive py-6">
+        <div className="container-responsive py-4 sm:py-6">
             <MatrixRain />
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${demoActive ? 'bg-neon-red animate-pulse' : isolated ? 'bg-neon-green' : 'bg-gray-600'}`} />
-                    <h1 className="font-[Orbitron] text-2xl font-bold text-white text-glow-blue relative">
-                        EXTERNAL THREAT
-                        <CyberCorner position="top-right" className="text-neon-blue -top-2 -right-6 !w-4 !h-4" />
-                    </h1>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${demoActive ? 'bg-neon-red animate-pulse' : isolated ? 'bg-neon-green' : 'bg-gray-600'}`} />
+                        <h1 className="font-[Orbitron] text-xl sm:text-2xl font-bold text-white text-glow-blue relative">
+                            EXTERNAL THREAT
+                            <CyberCorner position="top-right" className="text-neon-blue -top-2 -right-6 !w-4 !h-4" />
+                        </h1>
+                    </div>
                     {attackerIp && (
-                        <span className="font-mono text-sm text-neon-red ml-4">
+                        <span className="font-mono text-xs sm:text-sm text-neon-red sm:ml-4 bg-neon-red/10 px-2 py-1 rounded border border-neon-red/20">
                             <Wifi className="w-4 h-4 inline mr-1" />
                             Attacker: {attackerIp}
                         </span>
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                    <HydraMode mode={hydraMode} onModeChange={setHydraMode} />
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                    <div className="w-full sm:w-auto">
+                        <HydraMode mode={hydraMode} onModeChange={setHydraMode} />
+                    </div>
 
                     <button
-                        className={`btn-neon ${liveActive ? 'btn-neon-blue active' : 'btn-neon-blue'} flex items-center justify-center gap-2 w-full sm:w-auto`}
+                        className={`btn-neon ${liveActive ? 'btn-neon-blue active' : 'btn-neon-blue'} flex items-center justify-center gap-2 w-full sm:w-auto text-xs`}
                         onClick={startLiveMonitor}
                         disabled={liveActive}
                     >
@@ -313,14 +319,14 @@ export default function WarRoom() {
                     </button>
 
                     <button
-                        className={`btn-neon ${demoActive ? 'btn-neon-red' : 'btn-neon-green'} flex items-center justify-center gap-2 w-full sm:w-auto`}
+                        className={`btn-neon ${demoActive ? 'btn-neon-red' : 'btn-neon-green'} flex items-center justify-center gap-2 w-full sm:w-auto text-xs`}
                         onClick={startDemo}
                         disabled={demoActive}
                     >
                         {demoActive ? (
-                            <><Radio className="w-4 h-4 animate-pulse" /> Simulation Running...</>
+                            <><Radio className="w-4 h-4 animate-pulse" /> Simulating...</>
                         ) : (
-                            <><Zap className="w-4 h-4" /> Start Demo Simulation</>
+                            <><Zap className="w-4 h-4" /> Start Demo</>
                         )}
                     </button>
                 </div>
