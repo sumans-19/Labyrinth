@@ -4,10 +4,11 @@ import subprocess
 
 # --- Auto-Bootstrap Virtual Environment ---
 # Automatically switch to the isolated venv if the user runs 'python main.py' globally
-venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'Scripts', 'python.exe')
-if os.path.exists(venv_python) and sys.executable.lower() != venv_python.lower():
-    print("[*] Automatically switching to the isolated virtual environment...")
-    sys.exit(subprocess.call([venv_python] + sys.argv))
+if os.name == 'nt':
+    venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'Scripts', 'python.exe')
+    if os.path.exists(venv_python) and sys.executable.lower() != venv_python.lower():
+        print("[*] Automatically switching to the isolated virtual environment...")
+        sys.exit(subprocess.call([venv_python] + sys.argv))
 # ------------------------------------------
 import asyncio
 import json
