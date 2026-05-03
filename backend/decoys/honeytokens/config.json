@@ -1,6 +1,6 @@
 {
-    "AWS_ACCESS_KEY_ID": "AKIA2A0B157F77904D06",
-    "AWS_SECRET_ACCESS_KEY": "e8f9e668d382431d9cd90553a1560415cf71efe3",
-    "MONGODB_URI": "mongodb+srv://admin:d783107cd9b9@cluster0.mongodb.net/prod-db?retryWrites=true&w=majority",
-    "INTERNAL_API_TOKEN": "internal_auth_34f83eec5ef342c18ee2afe3393ac032"
+    "AWS_ACCESS_KEY_ID": "AKIA267B04DAFA8F49DF",
+    "AWS_SECRET_ACCESS_KEY": "126fdc776ba044d2a0a403ed5ea75898dadd79bd",
+    "MONGODB_URI": "mongodb+srv://admin:75ce755695b2@cluster0.mongodb.net/prod-db?retryWrites=true&w=majority",
+    "INTERNAL_API_TOKEN": "internal_auth_8569ee3b04f34ce1997a39c5d69e21c6"
 }
