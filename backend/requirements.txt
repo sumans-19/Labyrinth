@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 websockets>=12.0
@@ -7,10 +6,13 @@ openai>=1.0.0
 python-dotenv>=1.0.0
 google-generativeai>=0.3.0
 google-genai
+protobuf
 reportlab>=4.3.1
 scikit-learn>=1.3.0
 numpy
 pandas
+python-dateutil
+pytz
 paramiko
 openpyxl
 sqlalchemy
@@ -18,24 +20,3 @@ psycopg2-binary
 docker
 joblib>=1.3.0
 groq
-=======
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-websockets>=12.0
-requests>=2.32.0
-openai>=1.0.0
-python-dotenv>=1.0.0
-google-generativeai>=0.3.0
-google-genai
-reportlab>=4.3.1
-scikit-learn>=1.3.0
-numpy
-pandas
-paramiko
-openpyxl
-sqlalchemy
-psycopg2-binary
-docker
-joblib>=1.3.0
-groq
->>>>>>> origin/feat/impersonator-engine

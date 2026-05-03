@@ -81,12 +81,16 @@ async def lifespan(app):
             print("[!] Broadcast failed: main_loop not initialized")
         
     try:
-        print("[*] Lifespan: Starting SSH Honeypot on port 2222...")
-        start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
-        
-        print("[*] Lifespan: Starting Raw TCP Honeypot on port 8888...")
-        start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
-        
+        single_port = os.environ.get("SINGLE_PORT_MODE", "false").lower() == "true"
+        if not single_port:
+            print("[*] Lifespan: Starting SSH Honeypot on port 2222...")
+            start_ssh_honeypot(port=2222, broadcast_callback=thread_safe_broadcast)
+            
+            print("[*] Lifespan: Starting Raw TCP Honeypot on port 8888...")
+            start_raw_tcp_honeypot(port=8888, broadcast_callback=thread_safe_broadcast)
+        else:
+            print("[*] Lifespan: SINGLE_PORT_MODE enabled. Bypassing raw TCP/SSH honeypots.")
+            
         from lateral_interceptor import token_manager
         print("[*] Lifespan: Generating honeytoken decoys...")
         token_manager.create_decoy_files()
@@ -1398,5 +1402,8 @@ async def save_fingerprint(request: FingerprintSaveRequest):
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    # Support for PaaS platforms like Render/Heroku which assign a dynamic PORT
+    port = int(os.environ.get("PORT", 8000))
     # Disable auto-reload on Windows to avoid WinError 10013 on restricted ports.
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
