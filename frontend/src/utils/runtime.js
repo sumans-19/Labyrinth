@@ -1,10 +1,19 @@
 export function getBackendHttpBase() {
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL.replace(/\/$/, "");
+  }
   const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
   const hostname = window.location.hostname || 'localhost';
   return `${protocol}//${hostname}:8000`;
 }
 
 export function getBackendWsBase() {
+  if (import.meta.env.VITE_BACKEND_URL) {
+    let url = import.meta.env.VITE_BACKEND_URL.replace(/\/$/, "");
+    if (url.startsWith('https://')) return url.replace('https://', 'wss://');
+    if (url.startsWith('http://')) return url.replace('http://', 'ws://');
+    return `wss://${url.replace(/^.*:\/\//, '')}`;
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const hostname = window.location.hostname || 'localhost';
   return `${protocol}//${hostname}:8000`;
